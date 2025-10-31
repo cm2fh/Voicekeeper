@@ -1,0 +1,104 @@
+spring:
+  application:
+    name: voiceKeeper
+  profiles:
+    active: local
+    include: secret  # 包含敏感信息配置
+
+  # 数据源配置
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/voiceKeeper
+    username: root
+    password: ${DB_PASSWORD:}
+
+  # Redis配置
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      database: 10
+      password:
+      timeout: 3000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+          max-wait: -1ms
+
+  # 文件上传配置
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+
+  # Spring AI 配置
+  ai:
+    # 阿里云通义千问配置
+    dashscope:
+      api-key: ${DASHSCOPE_API_KEY}
+      chat:
+        options:
+          model: qwen-max
+          temperature: 0.8
+
+# 服务器配置
+server:
+  port: 8101
+  servlet:
+    context-path: /api
+
+# MyBatis-Plus配置
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      logic-delete-field: isDelete
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+# Knife4j API文档配置
+knife4j:
+  enable: true
+  setting:
+    language: zh_cn
+
+# VoiceKeeper Agent 配置
+voiceKeeper:
+  agent:
+    max-steps: 20  # Agent最大执行步骤
+    memory:
+      storage-type: redis  # file/redis/hybrid
+      summary:
+        threshold: 15      # 超过15条消息触发摘要
+        chunk-size: 6      # 每次摘要最旧的6条消息
+
+
+  # 声音服务配置
+  voice:
+    clone:
+      provider: elevenlabs  # 声音克隆服务提供商
+      api-key:
+      api-url: https://api.elevenlabs.io/v1
+    synthesis:
+      provider: alibaba     # 语音合成服务提供商
+      app-key:
+
+# 阿里云配置
+aliyun:
+  # OSS对象存储配置
+  oss:
+    endpoint: ${ALIYUN_OSS_ENDPOINT}
+    access-key-id: ${ALIYUN_ACCESS_KEY_ID}
+    access-key-secret: ${ALIYUN_ACCESS_KEY_SECRET}
+    bucket-name: ${ALIYUN_OSS_BUCKET:voiceKeeper}
+
+  # 语音服务配置
+  speech:
+    app-key: ${ALIYUN_SPEECH_APP_KEY}
+    access-key-id: ${ALIYUN_ACCESS_KEY_ID}
+    access-key-secret: ${ALIYUN_ACCESS_KEY_SECRET}
+    region: ${ALIYUN_REGION:cn-shanghai}
