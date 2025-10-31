@@ -7,7 +7,6 @@ import lombok.extern.slf4j.Slf4j;
 
 /**
  * ReAct模式的智能体抽象类
- * 实现了思考-行动的循环模式
  * AI原生应用的核心决策模式
  */
 @EqualsAndHashCode(callSuper = true)
@@ -37,11 +36,11 @@ public abstract class ReActAgent extends BaseAgent {
         // 重置最终答案
         setFinalAnswer(null);
 
-        log.info("🤔 思考中...");
+        log.info("思考中...");
         boolean shouldAct = think();
 
         if (shouldAct) {
-            log.info("⚡ 行动中...");
+            log.info("行动中...");
             return act();
         }
 
@@ -49,11 +48,11 @@ public abstract class ReActAgent extends BaseAgent {
         String answer = getFinalAnswer();
         if (answer != null && !answer.isEmpty()) {
             setState(AgentState.FINISHED);
-            log.info("✅ 思考完成 - 提供最终答案");
+            log.info("✅ 思考完成：提供最终答案");
             return answer;
         }
 
-        log.info("✅ 思考完成 - 无需行动");
+        log.info("✅ 思考完成：无需行动");
         setState(AgentState.FINISHED);
         return "思考完成 - 无需行动";
     }

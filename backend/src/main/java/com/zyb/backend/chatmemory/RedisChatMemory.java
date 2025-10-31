@@ -13,7 +13,6 @@ import java.util.List;
 
 /**
  * Redis版本的ChatMemory实现
- * AI原生应用的对话记忆存储
  */
 @Slf4j
 @Component
@@ -53,10 +52,10 @@ public class RedisChatMemory implements ChatMemory {
                 redisTemplate.opsForList().trim(key, -1000, -1);
             }
 
-            log.debug("✅ 成功添加 {} 条消息到会话: {}", messages.size(), conversationId);
+            log.debug("成功添加 {} 条消息到会话: {}", messages.size(), conversationId);
 
         } catch (Exception e) {
-            log.error("❌ 保存消息失败: {}", e.getMessage(), e);
+            log.error("保存消息失败: {}", e.getMessage(), e);
             throw new RuntimeException("保存消息失败", e);
         }
     }
@@ -77,16 +76,16 @@ public class RedisChatMemory implements ChatMemory {
                 }
             }
 
-            log.debug("📥 从会话 {} 获取到 {} 条消息", conversationId, messages.size());
+            log.debug("从会话 {} 获取到 {} 条消息", conversationId, messages.size());
 
         } catch (SerializationException e) {
-            log.warn("⚠️ 会话 {} 的数据反序列化失败，自动清理: {}", conversationId, e.getMessage());
+            log.warn("会话 {} 的数据反序列化失败，自动清理: {}", conversationId, e.getMessage());
             clearCorruptedData(conversationId);
             return new ArrayList<>();
         } catch (Exception e) {
-            log.error("❌ 获取消息失败: {}", e.getMessage(), e);
+            log.error("获取消息失败: {}", e.getMessage(), e);
             if (e.getMessage() != null && e.getMessage().contains("deserialize")) {
-                log.warn("⚠️ 检测到序列化问题，清理会话 {} 的数据", conversationId);
+                log.warn("检测到序列化问题，清理会话 {} 的数据", conversationId);
                 clearCorruptedData(conversationId);
                 return new ArrayList<>();
             }
@@ -99,7 +98,7 @@ public class RedisChatMemory implements ChatMemory {
     public void clear(String conversationId) {
         String key = keyPrefix + conversationId;
         redisTemplate.delete(key);
-        log.debug("🗑️ 清空会话: {}", conversationId);
+        log.debug("清空会话: {}", conversationId);
     }
 
     /**
@@ -111,48 +110,15 @@ public class RedisChatMemory implements ChatMemory {
     }
 
     /**
-     * 获取最近的N条消息
-     */
-    public List<Message> getRecentMessages(String conversationId, int limit) {
-        String key = keyPrefix + conversationId;
-        List<Message> messages = new ArrayList<>();
-
-        try {
-            List<Object> messageObjects = redisTemplate.opsForList().range(key, -limit, -1);
-
-            if (messageObjects != null) {
-                for (Object obj : messageObjects) {
-                    if (obj instanceof Message) {
-                        messages.add((Message) obj);
-                    }
-                }
-            }
-
-        } catch (SerializationException e) {
-            log.warn("⚠️ 会话 {} 的最近消息反序列化失败: {}", conversationId, e.getMessage());
-            clearCorruptedData(conversationId);
-            return new ArrayList<>();
-        } catch (Exception e) {
-            log.error("❌ 获取最近消息失败: {}", e.getMessage(), e);
-            if (e.getMessage() != null && e.getMessage().contains("deserialize")) {
-                clearCorruptedData(conversationId);
-                return new ArrayList<>();
-            }
-        }
-
-        return messages;
-    }
-
-    /**
      * 清理损坏的数据
      */
     private void clearCorruptedData(String conversationId) {
         String key = keyPrefix + conversationId;
         try {
             redisTemplate.delete(key);
-            log.info("✅ 已清理会话 {} 的损坏数据", conversationId);
+            log.info("已清理会话 {} 的损坏数据", conversationId);
         } catch (Exception e) {
-            log.error("❌ 清理损坏数据失败: {}", e.getMessage(), e);
+            log.error("清理损坏数据失败: {}", e.getMessage(), e);
         }
     }
 
@@ -162,14 +128,6 @@ public class RedisChatMemory implements ChatMemory {
     public boolean exists(String conversationId) {
         String key = keyPrefix + conversationId;
         return Boolean.TRUE.equals(redisTemplate.hasKey(key));
-    }
-
-    /**
-     * 更新会话活跃时间
-     */
-    public void updateActivity(String conversationId) {
-        String key = keyPrefix + conversationId;
-        redisTemplate.expire(key, expireTime);
     }
 }
 

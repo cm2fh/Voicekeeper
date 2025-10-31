@@ -3,6 +3,7 @@ package com.zyb.backend.agent.service;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.zyb.backend.agent.BaseAgent;
+import com.zyb.backend.agent.VoiceKeeperAgent;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.model.ChatModel;
@@ -38,20 +39,16 @@ public class AgentManagerService {
 
     /**
      * 获取或创建 VoiceKeeper 智能体
-     * AI原生应用的核心：一个会话对应一个Agent实例
      */
-    public BaseAgent getOrCreateVoiceKeeperAgent(String conversationId) {
+    public VoiceKeeperAgent getOrCreateAgent(String conversationId) {
         String cacheKey = "voiceKeeper:" + conversationId;
 
-        return agentCache.get(cacheKey, key -> {
-            log.info("🤖 创建新的 VoiceKeeper 智能体实例: {}", conversationId);
-            
-            // TODO: 这里将在后续创建 VoiceKeeperAgent 时实现
-            // VoiceKeeperAgent agent = new VoiceKeeperAgent(voiceTools, chatModel);
-            // agent.setConversationInfo(conversationId, chatMemory);
-            // return agent;
-            
-            throw new UnsupportedOperationException("VoiceKeeperAgent 尚未实现");
+        return (VoiceKeeperAgent) agentCache.get(cacheKey, key -> {
+            VoiceKeeperAgent agent = new VoiceKeeperAgent(voiceTools, chatModel);
+            agent.setConversationInfo(conversationId, chatMemory);
+
+            log.info("VoiceKeeper 智能体创建成功: {}", conversationId);
+            return agent;
         });
     }
 
@@ -59,7 +56,7 @@ public class AgentManagerService {
      * 生成会话ID
      */
     public String generateConversationId(String userId) {
-        String userPart = (userId != null && !userId.isEmpty()) ? userId : "anonymous";
+        String userPart = (userId != null && !userId.isEmpty()) ? userId : "default";
         return "voice:" + userPart + ":" + System.currentTimeMillis();
     }
 
@@ -68,7 +65,7 @@ public class AgentManagerService {
      */
     public void clearAgentCache(String conversationId) {
         agentCache.invalidate("voiceKeeper:" + conversationId);
-        log.info("🗑️ 清理智能体缓存: {}", conversationId);
+        log.info("清理智能体缓存: {}", conversationId);
     }
 
     /**
@@ -79,7 +76,7 @@ public class AgentManagerService {
         chatMemory.clear(conversationId);
         // 清理缓存中的智能体实例
         clearAgentCache(conversationId);
-        log.info("🗑️ 清理会话数据: {}", conversationId);
+        log.info("清理会话数据: {}", conversationId);
     }
 
     /**
@@ -90,7 +87,7 @@ public class AgentManagerService {
             var messages = chatMemory.get(conversationId);
             return !messages.isEmpty();
         } catch (Exception e) {
-            log.warn("⚠️ 检查会话存在性失败: {}", e.getMessage());
+            log.warn("检查会话存在性失败: {}", e.getMessage());
             return false;
         }
     }
@@ -103,7 +100,7 @@ public class AgentManagerService {
             var messages = chatMemory.get(conversationId);
             return messages.size();
         } catch (Exception e) {
-            log.warn("⚠️ 获取消息数量失败: {}", e.getMessage());
+            log.warn("获取消息数量失败: {}", e.getMessage());
             return 0;
         }
     }

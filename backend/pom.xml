@@ -6,21 +6,20 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.2.3</version>
+        <version>3.2.4</version>
         <relativePath/>
     </parent>
     <groupId>com.zyb</groupId>
     <artifactId>voiceKeeper</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>voiceKeeper</name>
-    <description>VoiceKeeper - AI原生声音留声机应用</description>
+    <description>VoiceKeeper</description>
     <properties>
         <java.version>21</java.version>
     </properties>
 
     <dependencyManagement>
         <dependencies>
-            <!-- Spring AI BOM -->
             <dependency>
                 <groupId>org.springframework.ai</groupId>
                 <artifactId>spring-ai-bom</artifactId>
@@ -29,7 +28,6 @@
                 <scope>import</scope>
             </dependency>
 
-            <!-- Spring AI Alibaba BOM -->
             <dependency>
                 <groupId>com.alibaba.cloud.ai</groupId>
                 <artifactId>spring-ai-alibaba-bom</artifactId>
@@ -41,6 +39,18 @@
     </dependencyManagement>
 
     <dependencies>
+        <dependency>
+            <groupId>com.alibaba.cloud.ai</groupId>
+            <artifactId>spring-ai-alibaba-core</artifactId>
+            <version>1.0.0.2</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.alibaba.cloud.ai</groupId>
+            <artifactId>spring-ai-alibaba-starter-dashscope</artifactId>
+            <version>1.0.0.2</version>
+        </dependency>
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-freemarker</artifactId>
@@ -89,11 +99,6 @@
         </dependency>
 
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-elasticsearch</artifactId>
-        </dependency>
-
-        <dependency>
             <groupId>com.aliyun.oss</groupId>
             <artifactId>aliyun-sdk-oss</artifactId>
             <version>3.17.1</version>
@@ -102,12 +107,6 @@
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>com.alibaba</groupId>
-            <artifactId>easyexcel</artifactId>
-            <version>3.3.2</version>
         </dependency>
 
         <dependency>
@@ -176,30 +175,10 @@
             <version>2.4.0-b180830.0359</version>
         </dependency>
 
-        <!-- ==================== Spring AI 相关依赖 ==================== -->
-        
-        <!-- Spring AI Alibaba 通义千问 -->
-        <dependency>
-            <groupId>com.alibaba.cloud.ai</groupId>
-            <artifactId>spring-ai-alibaba-starter-dashscope</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>com.alibaba.cloud.ai</groupId>
-            <artifactId>spring-ai-alibaba-core</artifactId>
-        </dependency>
-
-        <!-- Spring AI Chat Client -->
-        <dependency>
-            <groupId>org.springframework.ai</groupId>
-            <artifactId>spring-ai-client-chat</artifactId>
-        </dependency>
-
-        <!-- 阿里云 DashScope SDK -->
         <dependency>
             <groupId>com.alibaba</groupId>
             <artifactId>dashscope-sdk-java</artifactId>
-            <version>2.19.1</version>
+            <version>2.21.14</version>
             <exclusions>
                 <exclusion>
                     <groupId>org.slf4j</groupId>
@@ -208,40 +187,34 @@
             </exclusions>
         </dependency>
 
-        <!-- Caffeine 缓存 (Agent管理) -->
         <dependency>
             <groupId>com.github.ben-manes.caffeine</groupId>
             <artifactId>caffeine</artifactId>
             <version>3.1.8</version>
         </dependency>
 
-        <!-- Kryo 序列化 (ChatMemory) -->
         <dependency>
             <groupId>com.esotericsoftware</groupId>
             <artifactId>kryo</artifactId>
             <version>5.6.2</version>
         </dependency>
 
-        <!-- Apache Commons Pool2 (Redis连接池) -->
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-pool2</artifactId>
         </dependency>
 
-        <!-- Jackson Java8时间模块 -->
         <dependency>
             <groupId>com.fasterxml.jackson.datatype</groupId>
             <artifactId>jackson-datatype-jsr310</artifactId>
         </dependency>
 
-        <!-- OkHttp (HTTP客户端) -->
         <dependency>
             <groupId>com.squareup.okhttp3</groupId>
             <artifactId>okhttp</artifactId>
             <version>4.12.0</version>
         </dependency>
 
-        <!-- Spring Retry (工具重试机制) -->
         <dependency>
             <groupId>org.springframework.retry</groupId>
             <artifactId>spring-retry</artifactId>

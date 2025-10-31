@@ -96,7 +96,7 @@ public class ToolCallAgent extends ReActAgent {
         int attempt = 0;
         while (true) {
             try {
-                log.info("🤖 调用通义千问 API (尝试次数: {})", attempt + 1);
+                log.info("调用通义千问LLM (尝试次数: {})", attempt + 1);
                 chatResponse = getChatClient().prompt(prompt)
                         .system(getSystemPrompt())
                         .toolCallbacks(availableTools)
@@ -104,10 +104,10 @@ public class ToolCallAgent extends ReActAgent {
                         .chatResponse();
                 break;
             } catch (Exception e) {
-                log.error("❌ {}的思考过程遇到了问题: {}", getName(), e.getMessage());
+                log.error("{}的思考过程遇到了问题: {}", getName(), e.getMessage());
                 attempt++;
                 if (attempt >= maxRetries) {
-                    log.error("❌ API 调用失败，已达到最大重试次数 ({})", maxRetries);
+                    log.error("API 调用失败，已达到最大重试次数 ({})", maxRetries);
                     getMessageList().add(new AssistantMessage("处理时遇到错误: " + e.getMessage()));
                     return false;
                 }
@@ -133,12 +133,12 @@ public class ToolCallAgent extends ReActAgent {
         // 输出思考信息
         String result = assistantMessage.getText();
         List<AssistantMessage.ToolCall> toolCallList = assistantMessage.getToolCalls();
-        log.info("💭 {}思考: {}", getName(), result);
-        log.info("🛠️ {}选择了 {} 个工具", getName(), toolCallList.size());
+        log.info("{}思考: {}", getName(), result);
+        log.info("{}选择了 {} 个工具", getName(), toolCallList.size());
         
         if (!toolCallList.isEmpty()) {
             String toolCallInfo = toolCallList.stream()
-                    .map(toolCall -> String.format("  📌 工具：%s | 参数：%s",
+                    .map(toolCall -> String.format(" 工具：%s | 参数：%s",
                             toolCall.name(),
                             toolCall.arguments())
                     )
@@ -150,7 +150,7 @@ public class ToolCallAgent extends ReActAgent {
         if (willTerminate) {
             if (assistantMessage.getText() != null && !assistantMessage.getText().isEmpty()) {
                 setFinalAnswer(assistantMessage.getText());
-                log.info("✅ {}设置最终答案: {}", getName(), assistantMessage.getText());
+                log.info("{}设置最终答案: {}", getName(), assistantMessage.getText());
             }
             // 保存助手消息到对话历史
             getMessageList().add(assistantMessage);
@@ -213,7 +213,7 @@ public class ToolCallAgent extends ReActAgent {
         setMessageList(newHistory);
 
         String resultsForLog = cleanedResponses.stream()
-                .map(response -> String.format("✅ 工具 %s 完成任务！结果: %s",
+                .map(response -> String.format(" 工具 %s 完成任务！结果: %s",
                         response.name(),
                         response.responseData().substring(0, Math.min(100, response.responseData().length())) + "..."))
                 .collect(Collectors.joining("\n"));
@@ -231,7 +231,7 @@ public class ToolCallAgent extends ReActAgent {
         }
 
         if (detectLoop()) {
-            String correctionMessage = "⚠️ [系统自我纠正]: 检测到循环模式，重新评估策略";
+            String correctionMessage = "[系统自我纠正]: 检测到循环模式，重新评估策略";
             getMessageList().add(new AssistantMessage(correctionMessage));
             recentActions.clear();
             return "检测到操作循环模式，将尝试自我纠错";

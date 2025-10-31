@@ -11,7 +11,6 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * 缓存配置类
- * 使用 Caffeine 实现 Agent 实例缓存
  */
 @Configuration
 @EnableCaching

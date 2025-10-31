@@ -13,7 +13,7 @@ COPY src ./src
 RUN mvn package -DskipTests
 
 # 运行阶段
-FROM eclipse-temurin:17-jre-slim
+FROM eclipse-temurin:21-jre-slim
 
 # 设置工作目录
 WORKDIR /app

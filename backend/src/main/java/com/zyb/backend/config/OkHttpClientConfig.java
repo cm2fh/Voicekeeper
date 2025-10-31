@@ -12,7 +12,6 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * HTTP客户端配置类
- * 用于调用外部AI服务（声音克隆、语音合成等）
  */
 @Configuration
 public class OkHttpClientConfig {

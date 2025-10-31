@@ -14,8 +14,6 @@ import java.util.stream.Collectors;
 
 /**
  * 记忆摘要装饰器
- * AI原生应用的智能记忆管理：当对话过长时，自动使用AI生成摘要
- * 
  * 工作原理：
  * 1. 监控对话长度，超过阈值触发摘要
  * 2. 使用AI模型生成历史对话的摘要
@@ -54,8 +52,8 @@ public class SummarizingChatMemoryDecorator implements ChatMemory {
         this.chatModel = chatModel;
         this.summarizationThreshold = summarizationThreshold;
         this.messagesToSummarize = messagesToSummarize;
-        
-        log.info("📝 初始化记忆摘要装饰器: 阈值={}, 摘要消息数={}", 
+
+        log.info("初始化记忆摘要装饰器: 阈值={}, 摘要消息数={}",
                 summarizationThreshold, messagesToSummarize);
     }
 
@@ -70,7 +68,7 @@ public class SummarizingChatMemoryDecorator implements ChatMemory {
         // 2. 异步执行摘要（不阻塞用户请求）
         CompletableFuture.runAsync(() -> summarize(conversationId))
                 .exceptionally(e -> {
-                    log.error("❌ 会话 {} 的异步摘要任务执行失败", conversationId, e);
+                    log.error("会话 {} 的异步摘要任务执行失败", conversationId, e);
                     return null;
                 });
     }
@@ -86,7 +84,7 @@ public class SummarizingChatMemoryDecorator implements ChatMemory {
             return;
         }
 
-        log.info("📊 会话 {} 的历史记录长度 {} 已超过阈值 {}，开始执行摘要...",
+        log.info("会话 {} 的历史记录长度 {} 已超过阈值 {}，开始执行摘要...",
                 conversationId, currentHistory.size(), summarizationThreshold);
 
         try {
@@ -104,13 +102,11 @@ public class SummarizingChatMemoryDecorator implements ChatMemory {
             String promptTemplate = """
                     请将以下多轮对话历史进行简洁的摘要，浓缩关键信息和上下文。
                     摘要应作为后续对话的背景知识，帮助 AI 理解长期的对话语境。
-                    
                     对话历史:
                     ---
                     %s
                     ---
-                    
-                    请生成简洁的摘要（100字以内）：
+                    请生成简洁的摘要（200字以内）：
                     """.formatted(historyToSummarize);
 
             // 3. 调用 AI 模型生成摘要
@@ -121,7 +117,7 @@ public class SummarizingChatMemoryDecorator implements ChatMemory {
                     .getText();
             
             Message summaryMessage = new SystemMessage("【历史对话摘要】: " + summaryText);
-            log.info("✅ 会话 {} 的新摘要: {}", conversationId, summaryText);
+            log.info("会话 {} 的新摘要: {}", conversationId, summaryText);
 
             // 4. 构建新的、压缩后的对话历史 (摘要 + 近期消息)
             List<Message> newHistory = new ArrayList<>();
@@ -133,12 +129,12 @@ public class SummarizingChatMemoryDecorator implements ChatMemory {
                 chatMemory.clear(conversationId);
                 chatMemory.add(conversationId, newHistory);
             }
-            
-            log.info("✅ 会话 {} 的记忆摘要已完成。历史从 {} 条压缩到 {} 条",
+
+            log.info("会话 {} 的记忆摘要已完成。历史从 {} 条压缩到 {} 条",
                     conversationId, currentHistory.size(), newHistory.size());
                     
         } catch (Exception e) {
-            log.error("❌ 会话 {} 的摘要生成失败", conversationId, e);
+            log.error("会话 {} 的摘要生成失败", conversationId, e);
         }
     }
 

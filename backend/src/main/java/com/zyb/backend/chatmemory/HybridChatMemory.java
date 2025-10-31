@@ -21,7 +21,7 @@ public class HybridChatMemory implements ChatMemory {
     private final RedisChatMemory redisChatMemory;
     private final FileBasedChatMemory fileBasedChatMemory;
 
-    @Value("${voiceKeeper.agent.memory.storage-type:redis}")
+    @Value("${voiceKeeper.agent.memory.storage-type}")
     private String storageType;
 
     public HybridChatMemory(RedisChatMemory redisChatMemory) {
@@ -49,13 +49,13 @@ public class HybridChatMemory implements ChatMemory {
                 try {
                     redisChatMemory.add(conversationId, messages);
                 } catch (Exception e) {
-                    log.error("⚠️ Redis写入失败，使用文件存储: {}", e.getMessage());
+                    log.error("Redis写入失败，使用文件存储: {}", e.getMessage());
                 }
 
                 try {
                     fileBasedChatMemory.add(conversationId, messages);
                 } catch (Exception e) {
-                    log.error("⚠️ 文件写入失败: {}", e.getMessage());
+                    log.error("文件写入失败: {}", e.getMessage());
                 }
                 break;
         }
@@ -63,15 +63,11 @@ public class HybridChatMemory implements ChatMemory {
 
     @Override
     public List<Message> get(String conversationId) {
-        switch (storageType.toLowerCase()) {
-            case "redis":
-                return getFromRedis(conversationId);
-            case "file":
-                return fileBasedChatMemory.get(conversationId);
-            case "hybrid":
-            default:
-                return getFromHybrid(conversationId);
-        }
+        return switch (storageType.toLowerCase()) {
+            case "redis" -> getFromRedis(conversationId);
+            case "file" -> fileBasedChatMemory.get(conversationId);
+            default -> getFromHybrid(conversationId);
+        };
     }
 
     @Override
@@ -88,13 +84,13 @@ public class HybridChatMemory implements ChatMemory {
                 try {
                     redisChatMemory.clear(conversationId);
                 } catch (Exception e) {
-                    log.error("⚠️ Redis清空失败: {}", e.getMessage());
+                    log.error("Redis清空失败: {}", e.getMessage());
                 }
 
                 try {
                     fileBasedChatMemory.clear(conversationId);
                 } catch (Exception e) {
-                    log.error("⚠️ 文件清空失败: {}", e.getMessage());
+                    log.error("文件清空失败: {}", e.getMessage());
                 }
                 break;
         }
@@ -128,7 +124,7 @@ public class HybridChatMemory implements ChatMemory {
                 return messages;
             }
         } catch (Exception e) {
-            log.warn("⚠️ Redis读取失败: {}", e.getMessage());
+            log.warn("Redis读取失败: {}", e.getMessage());
         }
 
         // Redis失败或无数据，使用文件存储
@@ -136,12 +132,12 @@ public class HybridChatMemory implements ChatMemory {
             List<Message> fileMessages = fileBasedChatMemory.get(conversationId);
             if (!fileMessages.isEmpty()) {
                 // 将文件数据同步到Redis
-                log.debug("📤 将文件数据同步到Redis: {}", conversationId);
+                log.debug("将文件数据同步到Redis: {}", conversationId);
                 redisChatMemory.add(conversationId, fileMessages);
             }
             return fileMessages;
         } catch (Exception e) {
-            log.error("❌ 文件读取也失败: {}", e.getMessage());
+            log.error("文件读取也失败: {}", e.getMessage());
             return List.of();
         }
     }
@@ -154,11 +150,11 @@ public class HybridChatMemory implements ChatMemory {
             List<Message> fileMessages = fileBasedChatMemory.get(conversationId);
             if (!fileMessages.isEmpty()) {
                 redisChatMemory.add(conversationId, fileMessages);
-                log.info("✅ 成功迁移会话数据到Redis: {}, 消息数: {}",
+                log.info("成功迁移会话数据到Redis: {}, 消息数: {}",
                         conversationId, fileMessages.size());
             }
         } catch (Exception e) {
-            log.error("❌ 数据迁移失败: {}", e.getMessage(), e);
+            log.error("数据迁移失败: {}", e.getMessage(), e);
         }
     }
 

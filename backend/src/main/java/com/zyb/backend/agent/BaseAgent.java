@@ -1,9 +1,9 @@
 package com.zyb.backend.agent;
 
 import com.zyb.backend.agent.model.AgentState;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.messages.Message;
@@ -11,12 +11,12 @@ import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.util.StringUtils;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 /**
  * 抽象基础智能体类，用于管理智能体状态和执行流程
- * AI原生应用的核心基类
  */
 @Data
 @Slf4j
@@ -31,7 +31,8 @@ public abstract class BaseAgent {
 
     private AgentState state = AgentState.IDLE;
 
-    private int maxSteps = 20;
+    @Value("${voiceKeeper.agent.maxSteps}")
+    private int maxSteps;
 
     private int currentStep = 0;
 
@@ -43,6 +44,9 @@ public abstract class BaseAgent {
     // 会话ID和记忆存储
     private String conversationId;
     private ChatMemory chatMemory;
+
+    // 并发控制锁
+    private final transient Object executionLock = new Object();
 
     /**
      * 构造函数
@@ -93,48 +97,50 @@ public abstract class BaseAgent {
      * 运行智能体（同步）
      */
     public String run(String userPrompt) {
-        if (this.state != AgentState.IDLE) {
-            throw new RuntimeException("无法从当前状态运行智能体: " + this.state);
-        }
-        if (!StringUtils.hasText(userPrompt)) {
-            throw new RuntimeException("无法在用户提示为空时运行智能体");
-        }
-
-        state = AgentState.RUNNING;
-        addMessage(new UserMessage(userPrompt));
-
-        StringBuilder results = new StringBuilder();
-        try {
-            for (int i = 0; i < maxSteps && state != AgentState.FINISHED; i++) {
-                int stepNumber = i + 1;
-                currentStep = stepNumber;
-                log.info("执行步骤 {}/{}", stepNumber, maxSteps);
-                
-                // 单步执行
-                String stepResult = step();
-                results.append("Step ").append(stepNumber).append(": ").append(stepResult).append("\n");
-                
-                // 修剪历史
-                pruneHistory();
+        // 并发控制：同一Agent实例同时只能运行一次
+        synchronized (executionLock) {
+            if (this.state != AgentState.IDLE) {
+                throw new RuntimeException("智能体正在运行中，请稍后再试。当前状态: " + this.state);
+            }
+            if (!StringUtils.hasText(userPrompt)) {
+                throw new RuntimeException("无法在用户提示为空时运行智能体");
             }
 
-            if (currentStep >= maxSteps) {
-                state = AgentState.FINISHED;
-                results.append("执行结束: 达到最大步骤 (").append(maxSteps).append(")");
+            state = AgentState.RUNNING;
+            addMessage(new UserMessage(userPrompt));
+
+            StringBuilder results = new StringBuilder();
+            try {
+                for (int i = 0; i < maxSteps && state != AgentState.FINISHED; i++) {
+                    int stepNumber = i + 1;
+                    currentStep = stepNumber;
+                    log.info("执行步骤 {}/{}", stepNumber, maxSteps);
+
+                    // 单步执行
+                    String stepResult = step();
+                    results.append("Step ").append(stepNumber).append(": ").append(stepResult).append("\n");
+
+                    // 修剪历史
+                    pruneHistory();
+                }
+
+                if (currentStep >= maxSteps) {
+                    state = AgentState.FINISHED;
+                    results.append("执行结束: 达到最大步骤 (").append(maxSteps).append(")");
+                }
+                return results.toString();
+            } catch (Exception e) {
+                state = AgentState.ERROR;
+                log.error("执行智能体时发生错误", e);
+                return "执行错误: " + e.getMessage();
+            } finally {
+                this.cleanup();
             }
-            return results.toString();
-        } catch (Exception e) {
-            state = AgentState.ERROR;
-            log.error("执行智能体时发生错误", e);
-            return "执行错误: " + e.getMessage();
-        } finally {
-            this.cleanup();
         }
     }
 
     /**
      * 运行智能体（流式输出）
-     * AI原生应用的核心交互方式
      */
     public SseEmitter runStream(String userPrompt) {
         // 创建SseEmitter
@@ -142,77 +148,93 @@ public abstract class BaseAgent {
 
         // 异步处理
         CompletableFuture.runAsync(() -> {
-            try {
-                if (this.state != AgentState.IDLE) {
-                    emitter.send("错误：无法从状态运行智能体: " + this.state);
-                    emitter.complete();
-                    return;
-                }
-                if (!StringUtils.hasText(userPrompt)) {
-                    emitter.send("错误：不能使用空提示词运行智能体");
-                    emitter.complete();
-                    return;
-                }
-
-                // 更改状态
-                state = AgentState.RUNNING;
-                // 记录消息上下文
-                addMessage(new UserMessage(userPrompt));
-
+            // 并发控制：同一Agent实例同时只能运行一次
+            synchronized (executionLock) {
                 try {
-                    for (int i = 0; i < maxSteps && state != AgentState.FINISHED; i++) {
-                        int stepNumber = i + 1;
-                        currentStep = stepNumber;
-                        log.info("执行步骤: {}/{}", stepNumber, maxSteps);
-
-                        // 单步执行
-                        String stepResult = step();
-                        String result = "Step " + stepNumber + ": " + stepResult;
-
-                        // 发送每一步的结果
-                        emitter.send(result);
-                        // 修剪历史
-                        pruneHistory();
+                    if (this.state != AgentState.IDLE) {
+                        try {
+                            emitter.send("错误：智能体正在运行中，请稍后再试。当前状态: " + this.state);
+                            emitter.complete();
+                        } catch (Exception e) {
+                            log.error("发送错误消息失败", e);
+                        }
+                        return;
                     }
-                    
-                    // 检查是否超出步骤限制
-                    if (currentStep >= maxSteps) {
-                        state = AgentState.FINISHED;
-                        emitter.send("执行结束: 达到最大步骤 (" + maxSteps + ")");
+                    if (!StringUtils.hasText(userPrompt)) {
+                        try {
+                            emitter.send("错误：不能使用空提示词运行智能体");
+                            emitter.complete();
+                        } catch (Exception e) {
+                            log.error("发送错误消息失败", e);
+                        }
+                        return;
                     }
-                    // 正常完成
-                    emitter.complete();
-                } catch (Exception e) {
-                    state = AgentState.ERROR;
-                    log.error("执行智能体失败", e);
+
+                    // 更改状态
+                    state = AgentState.RUNNING;
+                    // 记录消息上下文
+                    addMessage(new UserMessage(userPrompt));
+
                     try {
-                        emitter.send("执行错误: " + e.getMessage());
+                        for (int i = 0; i < maxSteps && state != AgentState.FINISHED; i++) {
+                            int stepNumber = i + 1;
+                            currentStep = stepNumber;
+                            log.info("执行步骤: {}/{}", stepNumber, maxSteps);
+
+                            // 单步执行
+                            String stepResult = step();
+                            String result = "Step " + stepNumber + ": " + stepResult;
+
+                            // 发送每一步的结果
+                            emitter.send(result);
+                            // 修剪历史
+                            pruneHistory();
+                        }
+
+                        // 检查是否超出步骤限制
+                        if (currentStep >= maxSteps) {
+                            state = AgentState.FINISHED;
+                            emitter.send("执行结束: 达到最大步骤 (" + maxSteps + ")");
+                        }
+                        // 正常完成
                         emitter.complete();
-                    } catch (Exception ex) {
-                        emitter.completeWithError(ex);
+                    } catch (Exception e) {
+                        state = AgentState.ERROR;
+                        log.error("执行智能体失败", e);
+                        try {
+                            emitter.send("执行错误: " + e.getMessage());
+                            emitter.complete();
+                        } catch (Exception ex) {
+                            emitter.completeWithError(ex);
+                        }
+                    } finally {
+                        // 清理资源
+                        this.cleanup();
                     }
-                } finally {
-                    // 清理资源
-                    this.cleanup();
+                } catch (Exception e) {
+                    log.error("SSE处理异常", e);
+                    emitter.completeWithError(e);
                 }
-            } catch (Exception e) {
-                emitter.completeWithError(e);
             }
         });
 
         // 设置超时和完成回调
         emitter.onTimeout(() -> {
-            this.state = AgentState.ERROR;
-            this.cleanup();
-            log.warn("SSE 连接超时");
+            synchronized (executionLock) {
+                this.state = AgentState.ERROR;
+                this.cleanup();
+                log.warn("SSE 连接超时");
+            }
         });
 
         emitter.onCompletion(() -> {
-            if (this.state == AgentState.RUNNING) {
-                this.state = AgentState.FINISHED;
+            synchronized (executionLock) {
+                if (this.state == AgentState.RUNNING) {
+                    this.state = AgentState.FINISHED;
+                }
+                this.cleanup();
+                log.info("SSE 连接完成");
             }
-            this.cleanup();
-            log.info("SSE 连接完成");
         });
 
         return emitter;
@@ -235,13 +257,24 @@ public abstract class BaseAgent {
 
     /**
      * 修剪对话历史，保留最后N条消息
+     * 防止对话历史过长导致token消耗过大
      */
     protected void pruneHistory() {
         List<Message> messages = getMessageList();
         if (messages.size() <= maxHistorySize) {
             return;
         }
-        log.info("对话历史较长，当前大小: {}", messages.size());
+
+        log.info("对话历史较长，当前大小: {}，开始修剪...", messages.size());
+
+        // 保留最近的消息
+        List<Message> recentMessages = new ArrayList<>(
+                messages.subList(messages.size() - maxHistorySize, messages.size())
+        );
+
+        // 替换为修剪后的历史
+        setMessageList(recentMessages);
+
+        log.info("对话历史已修剪: {} → {} 条消息", messages.size(), recentMessages.size());
     }
 }
-
