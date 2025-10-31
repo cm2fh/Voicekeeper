@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.zyb.backend.mapper.VoiceModelMapper">
+
+    <resultMap id="BaseResultMap" type="com.zyb.backend.model.entity.VoiceModel">
+            <id property="id" column="id" jdbcType="BIGINT"/>
+            <result property="userId" column="userId" jdbcType="BIGINT"/>
+            <result property="modelName" column="modelName" jdbcType="VARCHAR"/>
+            <result property="voiceDesc" column="voiceDesc" jdbcType="VARCHAR"/>
+            <result property="sampleAudioUrl" column="sampleAudioUrl" jdbcType="VARCHAR"/>
+            <result property="sampleDuration" column="sampleDuration" jdbcType="INTEGER"/>
+            <result property="sampleFileSize" column="sampleFileSize" jdbcType="BIGINT"/>
+            <result property="aiModelId" column="aiModelId" jdbcType="VARCHAR"/>
+            <result property="aiProvider" column="aiProvider" jdbcType="VARCHAR"/>
+            <result property="trainingStatus" column="trainingStatus" jdbcType="TINYINT"/>
+            <result property="trainingMessage" column="trainingMessage" jdbcType="VARCHAR"/>
+            <result property="qualityScore" column="qualityScore" jdbcType="DECIMAL"/>
+            <result property="voiceType" column="voiceType" jdbcType="VARCHAR"/>
+            <result property="useCount" column="useCount" jdbcType="INTEGER"/>
+            <result property="createTime" column="createTime" jdbcType="TIMESTAMP"/>
+            <result property="updateTime" column="updateTime" jdbcType="TIMESTAMP"/>
+            <result property="isDelete" column="isDelete" jdbcType="TINYINT"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,userId,modelName,
+        voiceDesc,sampleAudioUrl,sampleDuration,
+        sampleFileSize,aiModelId,aiProvider,
+        trainingStatus,trainingMessage,qualityScore,
+        voiceType,useCount,createTime,
+        updateTime,isDelete
+    </sql>
+</mapper>

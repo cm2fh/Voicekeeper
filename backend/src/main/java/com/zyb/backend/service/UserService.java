@@ -11,7 +11,6 @@ import jakarta.servlet.http.HttpServletRequest;
 
 /**
  * 用户服务
- * VoiceKeeper - AI原生应用的用户管理服务
  */
 public interface UserService extends IService<User> {
 

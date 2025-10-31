@@ -114,7 +114,7 @@ public class UserController {
         
         // 如果未提供密码，使用默认密码
         if (StringUtils.isBlank(user.getPassword())) {
-            String defaultPassword = "voicekeeper123";
+            String defaultPassword = "defaultPassword";
             String encryptPassword = passwordEncoder.encode(defaultPassword);
             user.setPassword(encryptPassword);
         } else {
