@@ -1,12 +1,17 @@
 package com.zyb.backend.tools;
 
+import com.zyb.backend.common.exception.BusinessException;
+import com.zyb.backend.common.response.ResultCode;
 import com.zyb.backend.model.entity.VoiceCard;
 import com.zyb.backend.service.VoiceCardService;
+import com.zyb.backend.service.VoiceCardVectorService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.stereotype.Component;
+
+import java.util.concurrent.CompletableFuture;
 
 @Component
 @Slf4j
@@ -14,6 +19,9 @@ public class VoiceCardCreateTool {
 
     @Resource
     private VoiceCardService voiceCardService;
+
+    @Resource
+    private VoiceCardVectorService vectorService;
 
     @Tool(description = "创建声音卡片并保存到数据库")
     public String createVoiceCard(@ToolParam(description = "用户ID") Long userId,
@@ -39,6 +47,16 @@ public class VoiceCardCreateTool {
             boolean success = voiceCardService.save(voiceCard);
             if (success) {
                 log.info("声音卡片创建成功: cardId={}", voiceCard.getId());
+                
+                // 异步索引到向量存储
+                CompletableFuture.runAsync(() -> {
+                    try {
+                        vectorService.indexCard(voiceCard.getId());
+                    } catch (Exception e) {
+                        log.error("卡片向量索引失败: cardId={}, error={}", voiceCard.getId(), e.getMessage());
+                    }
+                });
+                
                 return String.format(
                         """
                         创建成功！
