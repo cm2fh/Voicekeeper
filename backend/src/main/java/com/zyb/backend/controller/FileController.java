@@ -4,7 +4,6 @@ import cn.hutool.core.io.FileUtil;
 import com.zyb.backend.common.exception.BusinessException;
 import com.zyb.backend.common.response.BaseResponse;
 import com.zyb.backend.common.response.ResultCode;
-import com.zyb.backend.constant.FileConstant;
 import com.zyb.backend.manager.OssManager;
 import com.zyb.backend.model.dto.file.UploadFileRequest;
 import com.zyb.backend.model.entity.User;
@@ -14,6 +13,7 @@ import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.RandomStringUtils;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestPart;
@@ -38,6 +38,9 @@ public class FileController {
     @Resource
     private OssManager ossManager;
 
+    @Value("${aliyun.oss.url-prefix}")
+    private String ossUrlPrefix;
+
     /**
      * 文件上传
      */
@@ -54,7 +57,7 @@ public class FileController {
         // 文件目录：根据业务、用户来划分
         String uuid = RandomStringUtils.randomAlphanumeric(8);
         String filename = uuid + "-" + multipartFile.getOriginalFilename();
-        String filepath = String.format("/%s/%s/%s", fileUploadBizEnum.getValue(), loginUser.getId(), filename);
+        String filepath = String.format("%s/%s/%s", fileUploadBizEnum.getValue(), loginUser.getId(), filename);  // ✅ 不以 / 开头
         File file = null;
         try {
             // 上传文件
@@ -62,7 +65,7 @@ public class FileController {
             multipartFile.transferTo(file);
             ossManager.putObject(filepath, file);
             // 返回可访问地址
-            return BaseResponse.success(FileConstant.OSS_HOST + filepath);
+            return BaseResponse.success(ossUrlPrefix + filepath);
         } catch (Exception e) {
             log.error("file upload error, filepath = {}", filepath, e);
             throw new BusinessException(ResultCode.SYSTEM_ERROR, "上传失败");

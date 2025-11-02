@@ -19,7 +19,6 @@ import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -34,9 +33,6 @@ public class UserController {
 
     @Resource
     private UserService userService;
-
-    @Resource
-    private PasswordEncoder passwordEncoder;
 
     // region 登录相关
 
@@ -114,12 +110,7 @@ public class UserController {
         
         // 如果未提供密码，使用默认密码
         if (StringUtils.isBlank(user.getPassword())) {
-            String defaultPassword = "defaultPassword";
-            String encryptPassword = passwordEncoder.encode(defaultPassword);
-            user.setPassword(encryptPassword);
-        } else {
-            // 加密提供的密码
-            user.setPassword(passwordEncoder.encode(user.getPassword()));
+            user.setPassword("123456");  // 默认密码
         }
         
         // 生成用户编号（如果未提供）
