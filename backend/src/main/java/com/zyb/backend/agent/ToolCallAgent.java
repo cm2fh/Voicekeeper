@@ -195,14 +195,8 @@ public class ToolCallAgent extends ReActAgent {
         // 清理工具响应内容
         for (ToolResponseMessage.ToolResponse response : originalToolResponse.getResponses()) {
             String originalData = response.responseData();
-            // 1. 移除URL
-            String cleanedData = originalData.replaceAll("https?://\\S+", "[链接已移除]");
-            // 2. 移除Markdown格式
-            cleanedData = cleanedData.replaceAll("#{1,6} ", "").replaceAll("`", "")
-                    .replaceAll(">", "").replaceAll("---", "")
-                    .replaceAll("\\*", "").replaceAll("_", "");
-            // 3. 移除多余换行
-            cleanedData = cleanedData.replaceAll("\\n{3,}", "\n\n").trim();
+            // 1. 仅移除多余换行，保留所有其他内容（包括URL、下划线等）
+            String cleanedData = originalData.replaceAll("\\n{3,}", "\n\n").trim();
 
             cleanedResponses.add(new ToolResponseMessage.ToolResponse(response.id(), response.name(), cleanedData));
         }
@@ -215,7 +209,7 @@ public class ToolCallAgent extends ReActAgent {
         String resultsForLog = cleanedResponses.stream()
                 .map(response -> String.format(" 工具 %s 完成任务！结果: %s",
                         response.name(),
-                        response.responseData().substring(0, Math.min(100, response.responseData().length())) + "..."))
+                        response.responseData().substring(0, Math.min(200, response.responseData().length())) + "..."))
                 .collect(Collectors.joining("\n"));
         log.info("工具执行结果:\n{}", resultsForLog);
 

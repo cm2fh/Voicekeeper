@@ -48,11 +48,11 @@ public abstract class ReActAgent extends BaseAgent {
         String answer = getFinalAnswer();
         if (answer != null && !answer.isEmpty()) {
             setState(AgentState.FINISHED);
-            log.info("✅ 思考完成：提供最终答案");
+            log.info("思考完成：提供最终答案");
             return answer;
         }
 
-        log.info("✅ 思考完成：无需行动");
+        log.info("思考完成：无需行动");
         setState(AgentState.FINISHED);
         return "思考完成 - 无需行动";
     }

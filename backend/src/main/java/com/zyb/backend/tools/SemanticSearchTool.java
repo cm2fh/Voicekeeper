@@ -23,15 +23,12 @@ public class SemanticSearchTool {
     private VoiceCardVectorService vectorService;
 
     @Tool(description = """
-        语义搜索用户的声音卡片。
-        功能：
-        1. 理解模糊描述：无需记住精确标题
-        2. 场景匹配：根据情感、时间、场景查找
-        3. 跨时间检索：可以找到任何历史时期的卡片
-        适用场景：
-        - 用户想找之前创建的卡片："找那个很温柔的卡片"
-        - 场景推荐："适合睡前听的声音"
-        - 情感检索："我想念妈妈时做的卡片"
+        【语义搜索】模糊查询声音卡片
+        使用时机：
+        - 用户描述模糊："温柔的卡片"、"适合睡前的"
+        - searchUserCards 未找到时的补充搜索
+        不要用于：
+        - 明确场景 → 直接用 searchUserCards
         """)
     public String searchCardsBySemantic(
             @ToolParam(description = "用户ID") Long userId,

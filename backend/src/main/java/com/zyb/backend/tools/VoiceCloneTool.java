@@ -97,7 +97,7 @@ public class VoiceCloneTool {
     }
 
     /**
-     * 异步等待音色处理完成（Virtual Thread）
+     * 异步等待音色处理完成
      */
     private void asyncWaitForVoice(Long modelId, String voiceId) {
         Thread.startVirtualThread(() -> {
@@ -105,20 +105,20 @@ public class VoiceCloneTool {
                 int maxAttempts = 20;
                 int intervalSeconds = 5;
 
-                for (int i = 0; i < maxAttempts; i++) {
+                for (int i = 0; i < maxAttempts; i ++) {
                     String status = cosyVoiceService.queryVoiceStatus(voiceId);
 
                     if ("OK".equals(status)) {
                         // 成功：更新数据库
                         voiceModelService.updateTrainingStatus(
-                            modelId, 2, "声音克隆成功！可以开始使用了"
+                            modelId, 2, "声音克隆成功"
                         );
                         log.info("音色处理完成: modelId={}, voiceId={}", modelId, voiceId);
                         return;
                     } else if ("UNDEPLOYED".equals(status)) {
                         // 失败：更新数据库
                         voiceModelService.updateTrainingStatus(
-                            modelId, 3, "声音克隆失败，请检查音频质量"
+                            modelId, 3, "声音克隆失败"
                         );
                         log.error("音色处理失败: modelId={}, voiceId={}", modelId, voiceId);
                         return;
@@ -130,7 +130,7 @@ public class VoiceCloneTool {
 
                 // 超时：更新为失败
                 voiceModelService.updateTrainingStatus(
-                    modelId, 3, "处理超时，请重试"
+                    modelId, 3, "声音克隆超时，请重试"
                 );
                 log.error("音色处理超时: modelId={}", modelId);
 

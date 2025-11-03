@@ -35,7 +35,7 @@ public class KryoRedisSerializer implements RedisSerializer<Object> {
         // 启用引用跟踪，处理循环引用
         kryo.setReferences(true);
 
-        log.debug("✅ 创建新的Kryo实例用于线程: {}", Thread.currentThread().getName());
+        log.debug("创建新的Kryo实例用于线程: {}", Thread.currentThread().getName());
         return kryo;
     });
 
@@ -53,13 +53,12 @@ public class KryoRedisSerializer implements RedisSerializer<Object> {
             output.flush();
 
             byte[] result = baos.toByteArray();
-            log.debug("📦 Kryo序列化成功: {} ({} bytes)",
-                    obj.getClass().getSimpleName(), result.length);
+            log.debug("Kryo序列化成功: {}",
+                    obj.getClass().getSimpleName());
             return result;
 
         } catch (Exception e) {
-            log.error("❌ Kryo序列化失败: {}, 错误: {}",
-                    obj.getClass().getSimpleName(), e.getMessage());
+            log.error("Kryo序列化失败: {}", e.getMessage());
             throw new SerializationException("Kryo序列化失败: " + e.getMessage(), e);
         }
     }
@@ -76,13 +75,12 @@ public class KryoRedisSerializer implements RedisSerializer<Object> {
             Kryo kryo = kryoThreadLocal.get();
             Object result = kryo.readClassAndObject(input);
 
-            log.debug("📤 Kryo反序列化成功: {} ({} bytes)",
-                    result.getClass().getSimpleName(), bytes.length);
+            log.debug("Kryo反序列化成功: {}",
+                    result.getClass().getSimpleName());
             return result;
 
         } catch (Exception e) {
-            log.error("❌ Kryo反序列化失败: {} bytes, 错误: {}",
-                    bytes.length, e.getMessage());
+            log.error("Kryo反序列化失败: {}", e.getMessage());
             throw new SerializationException("Kryo反序列化失败: " + e.getMessage(), e);
         }
     }

@@ -18,7 +18,6 @@ public class CacheConfig {
 
     /**
      * 配置 Caffeine 缓存管理器
-     * 用于 Agent 实例缓存
      */
     @Bean
     public CacheManager cacheManager() {

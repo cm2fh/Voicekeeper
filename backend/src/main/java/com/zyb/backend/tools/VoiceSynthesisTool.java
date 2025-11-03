@@ -35,14 +35,23 @@ public class VoiceSynthesisTool {
     private String ossUrlPrefix;
 
     @Tool(description = """
-            使用克隆的声音将文字合成为语音，支持情感控制。
-            根据场景自动调整语速、音调和情感。
-            返回生成的音频OSS地址。
+            【语音合成】将文字转换为克隆的声音
+            使用时机：
+            - 确认用户要"创建"新卡片
+            - 已通过 searchUserCards 确认不存在同类卡片
+            禁止：
+            - 用户只是"播放"已有卡片时使用
+            【文案生成指南】
+            - morning: 短句+!+重复。
+            - night: 长句+...+停顿。
+            - encourage: 重复强调。
+            - miss: ...+深情。
+            返回音频 OSS 地址。
             """)
     public String synthesizeVoice(
             @ToolParam(description = "声音模型ID") Long voiceModelId,
-            @ToolParam(description = "要合成的文字内容（建议100字以内）") String text,
-            @ToolParam(description = "场景标签：morning/night/encourage/miss/custom") String sceneTag
+            @ToolParam(description = "要合成的文字内容，50-70字为佳，需充满情感") String text,
+            @ToolParam(description = "场景标签：morning/night/encourage/miss/custom，影响语速音调") String sceneTag
     ) {
         try {
             log.info("开始语音合成: modelId={}, 文字长度={}", voiceModelId, text.length());

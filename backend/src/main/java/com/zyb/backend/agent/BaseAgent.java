@@ -1,9 +1,9 @@
 package com.zyb.backend.agent;
 
 import com.zyb.backend.agent.model.AgentState;
-import lombok.*;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.messages.Message;
@@ -31,12 +31,11 @@ public abstract class BaseAgent {
 
     private AgentState state = AgentState.IDLE;
 
-    @Value("${voiceKeeper.agent.maxSteps}")
-    private int maxSteps;
+    private int maxSteps = 20;
 
     private int currentStep = 0;
 
-    private int maxHistorySize = 20; // 对话历史窗口大小
+    private int maxHistorySize = 20;
 
     // LLM客户端
     private ChatClient chatClient;
@@ -151,6 +150,15 @@ public abstract class BaseAgent {
             // 并发控制：同一Agent实例同时只能运行一次
             synchronized (executionLock) {
                 try {
+                    // 首先发送conversationId给前端
+                    try {
+                        emitter.send(SseEmitter.event()
+                                .name("conversationId")
+                                .data(this.conversationId));
+                    } catch (Exception e) {
+                        log.error("发送conversationId失败", e);
+                    }
+                    
                     if (this.state != AgentState.IDLE) {
                         try {
                             emitter.send("错误：智能体正在运行中，请稍后再试。当前状态: " + this.state);
@@ -196,6 +204,9 @@ public abstract class BaseAgent {
                             state = AgentState.FINISHED;
                             emitter.send("执行结束: 达到最大步骤 (" + maxSteps + ")");
                         }
+                        // 发送完成信号（让前端知道要关闭连接，避免自动重连）
+                        emitter.send(SseEmitter.event().name("done").data("[DONE]"));
+                        log.info("SSE 连接完成");
                         // 正常完成
                         emitter.complete();
                     } catch (Exception e) {

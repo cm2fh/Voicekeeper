@@ -31,7 +31,7 @@ public class VoiceModelServiceImpl extends ServiceImpl<VoiceModelMapper, VoiceMo
     public VoiceModel getByUserIdAndName(Long userId, String modelName) {
         LambdaQueryWrapper<VoiceModel> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(VoiceModel::getUserId, userId)
-                .like(VoiceModel::getModelName, modelName);
+                .eq(VoiceModel::getModelName, modelName);
         return getOne(wrapper);
     }
 

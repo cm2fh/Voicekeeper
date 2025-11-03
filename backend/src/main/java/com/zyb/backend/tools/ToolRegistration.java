@@ -27,6 +27,12 @@ public class ToolRegistration {
     @Resource
     private VoiceSynthesisTool voiceSynthesisTool;
 
+    @Resource
+    private SemanticSearchTool semanticSearchTool;
+
+    @Resource
+    private VoiceCardCreateTool voiceCardCreateTool;
+
     /**
      * 注册所有工具供 VoiceKeeperAgent 使用
      */
@@ -41,6 +47,8 @@ public class ToolRegistration {
                 searchVoiceModelTool,
                 voiceCloneTool,
                 voiceSynthesisTool,
+                voiceCardCreateTool,
+                semanticSearchTool,
                 fileTool,
                 dateTimeTool,
                 terminateTool

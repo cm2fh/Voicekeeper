@@ -15,7 +15,7 @@ import java.io.File;
 @Component
 public class OssManager {
     
-    @Value("${ali-oss.bucketName}")
+    @Value("${aliyun.oss.bucketName}")
     private String bucketName;
 
     @Resource

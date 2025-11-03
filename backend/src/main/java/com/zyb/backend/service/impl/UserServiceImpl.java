@@ -37,9 +37,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     @Resource
     private UserMapper userMapper;
 
-    @Resource
-    private org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
-
     /**
      * 用户注册
      */
@@ -57,17 +54,15 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             if (count > 0) {
                 throw new BusinessException(ResultCode.PARAMS_ERROR, "用户名已存在");
             }
-            // 2. 加密密码
-            String encryptPassword = passwordEncoder.encode(password);
-            // 3. 生成用户编号
+            // 2. 生成用户编号
             String userNo = generateUserNo();
-            // 4. 插入数据
+            // 3. 插入数据
             User user = new User();
             user.setUserNo(userNo);
             user.setUsername(username);
-            user.setPassword(encryptPassword);
-            user.setRole("user");  // 默认普通用户
-            user.setStatus(1);     // 默认正常状态
+            user.setPassword(password);
+            user.setRole("user");
+            user.setStatus(1);
             boolean saveResult = this.save(user);
             if (!saveResult) {
                 throw new BusinessException(ResultCode.SYSTEM_ERROR, "注册失败，数据库错误");
@@ -98,7 +93,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (username.length() < 4) {
             throw new BusinessException(ResultCode.PARAMS_ERROR, "用户名错误");
         }
-        if (password.length() < 8) {
+        if (password.length() < 4) {
             throw new BusinessException(ResultCode.PARAMS_ERROR, "密码错误");
         }
         // 2. 查询用户
@@ -115,8 +110,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             throw new BusinessException(ResultCode.FORBIDDEN, "账号已被禁用");
         }
         // 3. 校验密码
-        String encryptPassword = user.getPassword();
-        if (!passwordEncoder.matches(password, encryptPassword)) {
+        if (!password.equals(user.getPassword())) {
             log.info("用户登录失败，密码错误: {}", username);
             throw new BusinessException(ResultCode.PARAMS_ERROR, "用户不存在或密码错误");
         }

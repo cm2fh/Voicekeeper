@@ -23,7 +23,15 @@ public class VoiceCardCreateTool {
     @Resource
     private VoiceCardVectorService vectorService;
 
-    @Tool(description = "创建声音卡片并保存到数据库")
+    @Tool(description = """
+        【创建卡片】将合成的语音保存为卡片
+        使用时机：
+        - 已调用 synthesizeVoice 获得 audioUrl 后
+        - 确认用户要"创建"、"做"新卡片
+        禁止：
+        - 用户只是想"播放"、"听"已有卡片时使用
+        - 必须先用 searchUserCards 检查是否已存在同类卡片
+        """)
     public String createVoiceCard(@ToolParam(description = "用户ID") Long userId,
                                   @ToolParam(description = "声音模型ID") Long voiceModelId,
                                   @ToolParam(description = "卡片标题，如'晚安问候'") String cardTitle,

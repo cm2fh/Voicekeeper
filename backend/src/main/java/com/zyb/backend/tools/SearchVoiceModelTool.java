@@ -6,11 +6,9 @@ import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 @Component
 @Slf4j
@@ -18,9 +16,6 @@ public class SearchVoiceModelTool {
 
     @Resource
     private VoiceModelService voiceModelService;
-
-    @Resource
-    private RedisTemplate<String, Object> redisTemplate;
 
     @Tool(description = "查询用户的声音模型列表，获取所有可用的声音模型信息")
     public String searchUserVoiceModels(@ToolParam(description = "用户ID") Long userId) {
@@ -54,34 +49,17 @@ public class SearchVoiceModelTool {
         return result.toString();
     }
 
-    @Tool(description = """
-            根据声音名称查询特定的声音模型。
-            
-            重要：会检测声音克隆状态的变化。
-            - 如果模型刚刚克隆完成（状态从'处理中'变为'已完成'），会特别提示
-            - 用于实时通知用户声音克隆已完成
-            """)
+    @Tool(description = "根据声音名称查询特定的声音模型")
     public String searchVoiceModelByName(
             @ToolParam(description = "用户ID") Long userId,
-            @ToolParam(description = "声音名称，如'妈妈的声音'") String modelName) {
+            @ToolParam(description = "声音名称，如妈妈的声音") String modelName) {
         
         VoiceModel model = voiceModelService.getByUserIdAndName(userId, modelName);
         if (model == null) {
-            return "未找到名为'" + modelName + "'的声音模型。用户需要先创建这个声音模型。";
+            return "未找到声音模型。用户需要先创建声音模型。";
         }
 
-        // 检测状态变化（用Redis缓存上次状态）
-        String statusKey = "voice:status:" + model.getId();
-        Integer lastStatus = (Integer) redisTemplate.opsForValue().get(statusKey);
-        Integer currentStatus = model.getTrainingStatus();
-
-        // 更新Redis中的状态（5分钟过期）
-        redisTemplate.opsForValue().set(statusKey, currentStatus, 5, TimeUnit.MINUTES);
-
-        // 检测从"处理中"→"已完成"的变化
-        boolean justCompleted = (lastStatus != null && lastStatus == 1 && currentStatus == 2);
-
-        String baseInfo = String.format(
+        return String.format(
                 """
                 声音模型【%s】：
                 - 模型ID: %d
@@ -93,18 +71,10 @@ public class SearchVoiceModelTool {
                 model.getModelName(),
                 model.getId(),
                 model.getAiModelId(),
-                getStatusText(currentStatus),
+                getStatusText(model.getTrainingStatus()),
                 model.getVoiceDesc(),
                 model.getUseCount() == null ? 0 : model.getUseCount()
         );
-
-        // 如果刚刚完成，添加特殊提示
-        if (justCompleted) {
-            return "🎉 好消息！声音克隆刚刚完成！\n\n" + baseInfo +
-                   "\n✅ 现在可以立即使用这个声音创建卡片了！";
-        }
-
-        return baseInfo;
     }
 
     private String getStatusText(Integer status) {

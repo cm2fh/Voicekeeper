@@ -243,8 +243,32 @@ public class VoiceCardController {
         wrapper.eq(aiGenerated != null, VoiceCard::getAiGenerated, aiGenerated);
         wrapper.eq(VoiceCard::getIsDelete, 0);
         
-        // 排序
-        wrapper.orderByDesc(VoiceCard::getCreateTime);
+        // 动态排序
+        if (StringUtils.isNotBlank(sortField)) {
+            boolean isAsc = "ascend".equals(sortOrder);
+            
+            // 根据排序字段设置排序规则
+            switch (sortField) {
+                case "playCount":
+                    wrapper.orderBy(true, isAsc, VoiceCard::getPlayCount);
+                    break;
+                case "createTime":
+                    wrapper.orderBy(true, isAsc, VoiceCard::getCreateTime);
+                    break;
+                case "shareCount":
+                    wrapper.orderBy(true, isAsc, VoiceCard::getShareCount);
+                    break;
+                case "audioDuration":
+                    wrapper.orderBy(true, isAsc, VoiceCard::getAudioDuration);
+                    break;
+                default:
+                    // 默认按创建时间倒序
+                    wrapper.orderByDesc(VoiceCard::getCreateTime);
+            }
+        } else {
+            // 没有指定排序字段时，默认按创建时间倒序
+            wrapper.orderByDesc(VoiceCard::getCreateTime);
+        }
         
         return wrapper;
     }

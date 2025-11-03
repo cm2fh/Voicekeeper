@@ -53,8 +53,8 @@ CREATE TABLE IF NOT EXISTS voice_model (
     sampleFileSize BIGINT COMMENT '样本文件大小(字节)',
     
     -- AI模型信息
-    aiModelId VARCHAR(200) COMMENT '第三方AI模型ID(ElevenLabs/阿里云)',
-    aiProvider VARCHAR(50) DEFAULT 'elevenlabs' COMMENT 'AI服务提供商',
+    aiModelId VARCHAR(200) COMMENT '第三方AI模型ID(ElevenLabs/阿里云/DashScope)',
+    aiProvider VARCHAR(50) COMMENT 'AI服务提供商: elevenlabs/dashscope',
     trainingStatus TINYINT DEFAULT 0 COMMENT '训练状态: 0-待训练 1-训练中 2-成功 3-失败',
     trainingMessage VARCHAR(500) COMMENT '训练消息(成功/失败原因)',
     
@@ -113,25 +113,27 @@ CREATE TABLE IF NOT EXISTS voice_card (
 
 -- ==================== 插入测试数据 ====================
 
--- 插入测试用户
+-- 插入测试用户（使用明文密码，便于测试）
+-- 注意：生产环境应使用加密密码
 INSERT INTO user (id, userNo, username, password, realName, phone, email, role, status)
 VALUES 
-(1, 'U000001', 'testuser', '$2a$10$test.hash.password', '测试用户', '13800138000', 'test@example.com', 'user', 1),
-(2, 'U000002', 'demo', '$2a$10$demo.hash.password', '演示用户', '13800138001', 'demo@example.com', 'user', 1)
+(1, 'U000001', 'admin', 'admin', '管理员', '13900000000', 'admin@voicekeeper.com', 'admin', 1),
+(2, 'U000002', 'testuser', 'testuser', '测试用户', '13800138000', 'test@example.com', 'user', 1),
+(3, 'U000003', 'demo', 'demo', '演示用户', '13800138001', 'demo@example.com', 'user', 1)
 ON DUPLICATE KEY UPDATE id=id;
 
--- 插入示例声音模型
+-- 插入示例声音模型（属于 testuser，ID=2）
 INSERT INTO voice_model (userId, modelName, voiceDesc, sampleAudioUrl, sampleDuration, trainingStatus, aiProvider)
 VALUES 
-(1, '妈妈的声音', '温暖慈爱的声音', 'https://oss.example.com/samples/mom_voice.mp3', 180, 2, 'elevenlabs'),
-(1, '爸爸的声音', '沉稳有力的声音', 'https://oss.example.com/samples/dad_voice.mp3', 200, 2, 'elevenlabs')
+(2, '妈妈的声音', '温暖慈爱的声音', 'https://oss.example.com/samples/mom_voice.mp3', 180, 2, 'dashscope'),
+(2, '爸爸的声音', '沉稳有力的声音', 'https://oss.example.com/samples/dad_voice.mp3', 200, 2, 'dashscope')
 ON DUPLICATE KEY UPDATE id=id;
 
--- 插入示例声音卡片
+-- 插入示例声音卡片（属于 testuser，ID=2）
 INSERT INTO voice_card (userId, voiceModelId, cardTitle, textContent, sceneTag, emotionTag, aiGenerated, audioUrl)
 VALUES 
-(1, 1, '晚安问候', '宝贝晚安，无论多晚都要好好休息，妈妈永远爱你', 'night', 'warm', 1, 'https://oss.example.com/cards/goodnight.mp3'),
-(1, 1, '早安鼓励', '早上好宝贝！新的一天开始了，加油！妈妈相信你', 'morning', 'energetic', 1, 'https://oss.example.com/cards/morning.mp3'),
-(1, 2, '工作鼓励', '儿子，工作再累也要注意身体，爸爸支持你', 'encourage', 'gentle', 1, 'https://oss.example.com/cards/work_encourage.mp3')
+(2, 1, '晚安问候', '宝贝晚安，无论多晚都要好好休息，妈妈永远爱你', 'night', 'warm', 1, 'https://oss.example.com/cards/goodnight.mp3'),
+(2, 1, '早安鼓励', '早上好宝贝！新的一天开始了，加油！妈妈相信你', 'morning', 'energetic', 1, 'https://oss.example.com/cards/morning.mp3'),
+(2, 2, '工作鼓励', '儿子，工作再累也要注意身体，爸爸支持你', 'encourage', 'gentle', 1, 'https://oss.example.com/cards/work_encourage.mp3')
 ON DUPLICATE KEY UPDATE id=id;
 

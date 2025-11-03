@@ -4,7 +4,7 @@ spring:
   profiles:
     active: secret
 
-  # Redis配置
+  # Redis
   data:
     redis:
       host: localhost
@@ -19,41 +19,56 @@ spring:
           min-idle: 0
           max-wait: -1ms
 
-  # 文件上传配置
+  # File upload
   servlet:
     multipart:
       max-file-size: 50MB
       max-request-size: 50MB
 
-# 服务器配置
+  # Elasticsearch
+  elasticsearch:
+    uris: http://localhost:9200
+    connection-timeout: 10s
+    socket-timeout: 30s
+
+  # AI 向量存储
+  ai:
+    vectorstore:
+      elasticsearch:
+        initialize-schema: true  # 自动创建索引
+        index-name: voicekeeper_cards
+        dimensions: 1536  # DashScope embedding 维度
+        similarity: cosine  # 余弦相似度
+
+# Server
 server:
   port: 8101
   servlet:
     context-path: /api
 
-# MyBatis-Plus配置
+# MyBatis-Plus
 mybatis-plus:
   configuration:
-    map-underscore-to-camel-case: true
+    map-underscore-to-camel-case: false
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
   global-config:
     db-config:
       logic-delete-field: isDelete
       logic-delete-value: 1
       logic-not-delete-value: 0
+      table-underline: false
 
-# Knife4j API文档配置
+# Knife4j API
 knife4j:
   enable: true
   setting:
     language: zh_cn
 
-# VoiceKeeper Agent 配置
+# VoiceKeeper Agent
 voiceKeeper:
   agent:
-    maxSteps: 20  # 最大执行步骤
     memory:
-      storage-type: redis  # file/redis/hybrid
+      storage-type: redis
       summary:
-        threshold: 15      # 超过 15 条消息触发摘要
-        chunk-size: 10      # 每次摘要最旧的 10 条消息
+        threshold: 15
+        chunk-size: 10

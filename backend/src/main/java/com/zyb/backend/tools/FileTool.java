@@ -23,9 +23,7 @@ public class FileTool {
     public String readFile(@ToolParam(description = "文件名") String fileName) {
         String filePath = FILE_DIR + "/" + fileName;
         try {
-            return retryHelper.executeFileOperation("readFile", () -> 
-                FileUtil.readUtf8String(filePath)
-            );
+            return FileUtil.readUtf8String(filePath);
         } catch (Exception e) {
             return "读取文件失败: " + e.getMessage();
         }
@@ -37,11 +35,9 @@ public class FileTool {
             @ToolParam(description = "文件内容") String content) {
         String filePath = FILE_DIR + "/" + fileName;
         try {
-            return retryHelper.executeFileOperation("writeFile", () -> {
-                FileUtil.mkdir(FILE_DIR);
-                FileUtil.writeUtf8String(content, filePath);
-                return "文件写入成功: " + filePath;
-            });
+            FileUtil.mkdir(FILE_DIR);
+            FileUtil.writeUtf8String(content, filePath);
+            return "文件写入成功: " + filePath;
         } catch (Exception e) {
             return "写入文件失败: " + e.getMessage();
         }

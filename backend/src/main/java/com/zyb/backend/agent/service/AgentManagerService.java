@@ -36,18 +36,18 @@ public class AgentManagerService {
             .maximumSize(1000)
             .recordStats()
             .build();
-
     /**
      * 获取或创建 VoiceKeeper 智能体
      */
-    public VoiceKeeperAgent getOrCreateAgent(String conversationId) {
+    public VoiceKeeperAgent getOrCreateAgent(String conversationId, Long userId) {
         String cacheKey = "voiceKeeper:" + conversationId;
 
         return (VoiceKeeperAgent) agentCache.get(cacheKey, key -> {
             VoiceKeeperAgent agent = new VoiceKeeperAgent(voiceTools, chatModel);
             agent.setConversationInfo(conversationId, chatMemory);
+            agent.setUserId(userId);
 
-            log.info("VoiceKeeper 智能体创建成功: {}", conversationId);
+            log.info("VoiceKeeper 智能体创建成功: conversationId={}, userId={}", conversationId, userId);
             return agent;
         });
     }

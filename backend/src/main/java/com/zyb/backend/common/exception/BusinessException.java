@@ -24,11 +24,13 @@ public class BusinessException extends RuntimeException {
     public BusinessException(ResultCode ResultCode) {
         super(ResultCode.getMessage());
         this.code = ResultCode.getCode();
+        this.message = ResultCode.getMessage();
     }
 
     public BusinessException(ResultCode ResultCode, String message) {
         super(message);
         this.code = ResultCode.getCode();
+        this.message = message;
     }
 
     @Override
