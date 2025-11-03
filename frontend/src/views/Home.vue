@@ -42,23 +42,80 @@
                   <div v-if="!msg.content && msg.steps && msg.steps.length > 0" class="ai-thinking">
                     <span class="thinking-text">思考中...</span>
                   </div>
-                  <!-- AI响应内容（如果有卡片则不显示） -->
-                  <div v-if="msg.content && !msg.audioUrl" class="ai-response">{{ msg.content }}</div>
+                  <!-- AI响应内容（排除所有卡片场景） -->
+                  <div v-if="msg.content && !isCardList(msg.content) && !hasSingleCard(msg.content)" class="ai-response">
+                    <span>{{ msg.content }}</span>
+                  </div>
                   
-                  <!-- 音频播放器 -->
-                  <div v-if="msg.audioUrl" class="audio-player-card">
-                    <div class="audio-title">
-                      <el-icon><Headset /></el-icon>
-                      <span>{{ msg.cardTitle || '语音卡片' }}</span>
+                  <!-- 单张卡片场景（包括创建成功和查询结果）：简洁提示 + 音频播放器 -->
+                  <div v-if="hasSingleCard(msg.content)" class="single-card-response">
+                    <!-- 卡片前的引导文字 -->
+                    <div v-if="getSingleCardIntro(msg.content)" class="card-intro">
+                      {{ getSingleCardIntro(msg.content) }}
                     </div>
-                    <audio controls :src="msg.audioUrl" class="audio-player">
-                      您的浏览器不支持音频播放
-                    </audio>
-                    <div v-if="msg.cardId" class="card-actions">
-                      <el-button type="primary" size="small" @click="goToCardDetail(msg.cardId)">
-                        <el-icon><View /></el-icon>
-                        查看卡片详情
-                      </el-button>
+                    
+                    <!-- 音频播放器 -->
+                    <div v-if="msg.audioUrl" class="audio-player-card">
+                      <div class="audio-title">
+                        <el-icon><Headset /></el-icon>
+                        <span>{{ msg.cardTitle || '语音卡片' }}</span>
+                      </div>
+                      <audio controls :src="msg.audioUrl" class="audio-player">
+                        您的浏览器不支持音频播放
+                      </audio>
+                      <div v-if="msg.cardId" class="card-actions">
+                        <el-button type="primary" size="small" @click="goToCardDetail(msg.cardId)">
+                          <el-icon><View /></el-icon>
+                          查看卡片详情
+                        </el-button>
+                      </div>
+                    </div>
+                    
+                    <!-- 卡片后的引导文字 -->
+                    <div v-if="getSingleCardOutro(msg.content)" class="card-outro">
+                      {{ getSingleCardOutro(msg.content) }}
+                    </div>
+                  </div>
+                  
+                  <!-- 卡片列表场景：解析并渲染每张卡片 -->
+                  <div v-if="isCardList(msg.content)" class="card-list-response">
+                    <!-- 引导文字 -->
+                    <div v-if="getCardListIntro(msg.content)" class="card-list-intro">
+                      {{ getCardListIntro(msg.content) }}
+                    </div>
+                    
+                    <!-- 卡片列表 -->
+                    <div class="cards-grid">
+                      <div 
+                        v-for="(card, idx) in parseCardList(msg.content)" 
+                        :key="idx"
+                        class="card-item"
+                      >
+                        <div class="card-header">
+                          <span class="card-number">{{ idx + 1 }}</span>
+                          <span class="card-title">{{ card.title }}</span>
+                        </div>
+                        <audio v-if="card.audioUrl" controls :src="card.audioUrl" class="card-audio">
+                          您的浏览器不支持音频播放
+                        </audio>
+                        <div class="card-footer">
+                          <span class="card-id">ID: {{ card.cardId }}</span>
+                          <el-button 
+                            v-if="card.cardId" 
+                            type="primary" 
+                            size="small" 
+                            text
+                            @click="goToCardDetail(card.cardId)"
+                          >
+                            查看详情
+                          </el-button>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <!-- 结尾引导 -->
+                    <div v-if="getCardListOutro(msg.content)" class="card-list-outro">
+                      {{ getCardListOutro(msg.content) }}
                     </div>
                   </div>
                 </div>
@@ -299,24 +356,275 @@ const handleNewConversation = async () => {
   }
 }
 
-// 解析AI返回的音频URL和卡片ID
+// 判断是否是卡片列表（包含多张卡片）
+const isCardList = (content: string) => {
+  if (!content) return false
+  
+  // 检测卡片列表的特征：
+  // 1. 包含编号列表（1. 2. 3.）- 兼容各种格式：1. 【、1. **【、1. -、1. [
+  // 2. 包含多个卡片ID
+  // 3. 包含多个音频URL
+  const hasNumberedList = /\n\s*[123]\.\s*(?:\*\*)?(?:【|\[|-|「)/.test(content)
+  const urlMatches = content.match(/voice-keeper\.oss[-a-z0-9.]+\.aliyuncs\.com\/[^\s\)]+\.mp3/gi)
+  const hasMultipleUrls = urlMatches && urlMatches.length > 1
+  
+  return hasNumberedList || hasMultipleUrls
+}
+
+// 判断是否包含单张卡片（完全通用，不依赖任何固定格式）
+const hasSingleCard = (content: string) => {
+  if (!content) return false
+  
+  // 只要有voice-keeper的MP3 URL就渲染播放器（卡片ID是可选的）
+  const hasAudioUrl = /voice-keeper\.oss[-a-z0-9.]+\.aliyuncs\.com\/[^\s\)]+\.mp3/i.test(content)
+  
+  // 不是卡片列表（多张卡片）
+  const isNotList = !isCardList(content)
+  
+  // 关键改动：只要有URL且不是列表，就渲染单卡片（不强制要求卡片ID）
+  return hasAudioUrl && isNotList
+}
+
+// 清理文本中的所有结构化标记（完全通用，移除一切技术性标记）
+const cleanStructuredText = (text: string) => {
+  if (!text) return ''
+  
+  let cleaned = text
+  
+  // 1. 移除所有URL（voice-keeper和其他）
+  cleaned = cleaned.replace(/https?:\/\/[^\s]+/gi, '')
+  
+  // 2. 移除完整的Markdown链接 [文字](URL)
+  cleaned = cleaned.replace(/\[([^\]]+)\]\([^)]+\)/g, '')
+  
+  // 3. 移除不完整的Markdown链接 [文字](
+  cleaned = cleaned.replace(/\[[^\]]+\]\(/g, '')
+  
+  // 4. 移除所有emoji（常见的）
+  cleaned = cleaned.replace(/[🎵🆔📋🎙️✨🔍🌙💬❌✅🎶💡🚀📝🔊🏷️⚡]/g, '')
+  
+  // 5. 移除结构化字段标记（所有可能的格式）
+  cleaned = cleaned.replace(/(?:【)?(?:\*\*)?(?:音频|卡片标题|卡片ID|卡片|标题|ID|id)(?:\*\*)?(?:】)?[：:]\s*/gi, '')
+  
+  // 6. 移除单独的【】方括号对
+  cleaned = cleaned.replace(/【([^】]*)】/g, '$1')
+  
+  // 7. 移除Markdown加粗标记 **xxx**
+  cleaned = cleaned.replace(/\*\*([^*]+)\*\*/g, '$1')
+  
+  // 8. 清理多余的空白
+  cleaned = cleaned.replace(/\n{3,}/g, '\n\n') // 多余空行
+  cleaned = cleaned.replace(/\s{3,}/g, ' ')     // 多余空格
+  cleaned = cleaned.trim()
+  
+  return cleaned
+}
+
+// 提取单张卡片前的引导文字（完全通用，找到第一个结构化标记之前的文字）
+const getSingleCardIntro = (content: string) => {
+  if (!content) return ''
+  
+  // 通用策略：找到第一个"明显的结构化标记"之前的所有文字
+  const patterns = [
+    /^([\s\S]*?)(?=https:\/\/)/i,              // 任何URL之前
+    /^([\s\S]*?)(?=\]\()/,                     // Markdown链接之前
+    /^([\s\S]*?)(?=[🎵🆔📋🎙️✨🔍])/,          // 任何emoji之前
+    /^([\s\S]*?)(?=【(?:音频|卡片|标题|ID))/i, // 【xxx】字段之前
+    /^([\s\S]*?)(?=\*\*(?:音频|卡片|ID))/i,    // 加粗字段之前
+  ]
+  
+  for (const pattern of patterns) {
+    const match = content.match(pattern)
+    if (match) {
+      const intro = cleanStructuredText(match[1])
+      // 过滤掉太短的或只有标点的
+      if (intro && intro.length > 3 && /[\u4e00-\u9fa5a-zA-Z]/.test(intro)) {
+        return intro
+      }
+    }
+  }
+  
+  return ''
+}
+
+// 提取单张卡片后的引导文字（完全通用，找到ID之后的所有文字）
+const getSingleCardOutro = (content: string) => {
+  if (!content) return ''
+  
+  // 通用策略：找到最后一个数字ID之后的所有文字
+  // 支持所有可能的格式：
+  // - 卡片ID: 15、【卡片ID】: 15、**卡片ID**: 15
+  // - 🆔 16、📋 卡片ID：15
+  // - ID: 15
+  const patterns = [
+    /(?:【)?(?:卡片)?(?:\*\*)?(?:ID|id)(?:\*\*)?(?:】)?[：:]\s*\d+\s*\n*([\s\S]*?)$/i,  // 通用ID之后（含【】）
+    /[🆔📋]\s*\d+\s*\n*([\s\S]*?)$/i  // emoji ID之后
+  ]
+  
+  for (const pattern of patterns) {
+    const match = content.match(pattern)
+    if (match) {
+      const outro = cleanStructuredText(match[1])
+      // 过滤掉太短的或只有标点的
+      if (outro && outro.length > 5 && /[\u4e00-\u9fa5a-zA-Z]/.test(outro)) {
+        return outro
+      }
+    }
+  }
+  
+  return ''
+}
+
+// 解析卡片列表，提取每张卡片的信息
+const parseCardList = (content: string) => {
+  if (!content) return []
+  
+  const cards: Array<{
+    title: string
+    audioUrl?: string
+    cardId?: number
+  }> = []
+  
+  // 使用正则匹配所有编号的卡片块
+  // 兼容多种格式：1. 【标题】、1. **【标题】**、1. [标题]、1. - 标题
+  const cardPattern = /(\d+)\.\s*(?:\*\*)?(?:【([^】]+)】|\[([^\]]+)\]|[-–]\s*([^\n]+?))(?:\*\*)?([\s\S]*?)(?=\n\s*\d+\.\s*|$)/g
+  let match
+  
+  while ((match = cardPattern.exec(content)) !== null) {
+    const cardBlock = match[0]
+    // 标题可能在不同的捕获组中
+    const title = (match[2] || match[3] || match[4] || '').trim()
+    if (!title) continue
+    
+    // 提取音频URL - 支持多种格式：
+    // 1. 音频: https://...
+    // 2. [点击播放](https://...)
+    // 3. 直接的URL
+    let audioUrl: string | undefined
+    
+    // 优先匹配Markdown链接
+    const markdownMatch = cardBlock.match(/\[([^\]]+)\]\((https:\/\/voice-keeper[^\)]+\.mp3)\)/)
+    if (markdownMatch) {
+      audioUrl = markdownMatch[2]
+    } else {
+      // 匹配 "音频:" 格式
+      const audioMatch = cardBlock.match(/(?:音频|🔊)[：:]\s*(https:\/\/[^\s\n\)]+\.mp3)/i)
+      if (audioMatch) {
+        audioUrl = audioMatch[1]
+      } else {
+        // 匹配直接的URL
+        const directUrlMatch = cardBlock.match(/(https:\/\/voice-keeper\.oss[^\s\n\)]+\.mp3)/i)
+        if (directUrlMatch) {
+          audioUrl = directUrlMatch[1]
+        }
+      }
+    }
+    
+    // 提取卡片ID（如果有）
+    const idMatch = cardBlock.match(/卡片ID[：:]\s*(\d+)/)
+    const cardId = idMatch ? parseInt(idMatch[1]) : undefined
+    
+    if (title || audioUrl) {
+      cards.push({ title, audioUrl, cardId })
+    }
+  }
+  
+  return cards
+}
+
+// 提取卡片列表前的引导文字
+const getCardListIntro = (content: string) => {
+  if (!content) return ''
+  
+  // 提取第一个编号列表之前的文字 - 兼容多种格式
+  const introMatch = content.match(/^([\s\S]*?)\n\s*1\.\s*(?:\*\*)?(?:【|\[)/)
+  if (introMatch) {
+    return cleanStructuredText(introMatch[1])
+  }
+  return ''
+}
+
+// 提取卡片列表后的引导文字
+const getCardListOutro = (content: string) => {
+  if (!content) return ''
+  
+  // 找到最后一个编号卡片的结束位置
+  // 先找到所有的卡片块
+  const lastCardPattern = /\d+\.\s*【[^】]+】[\s\S]*?卡片ID[：:]\s*\d+/g
+  const matches = content.match(lastCardPattern)
+  
+  if (!matches || matches.length === 0) return ''
+  
+  // 找到最后一个卡片的结束位置
+  const lastCard = matches[matches.length - 1]
+  const lastCardIndex = content.lastIndexOf(lastCard)
+  const afterLastCard = content.substring(lastCardIndex + lastCard.length)
+  
+  // 清理并提取后面的文字
+  const outro = cleanStructuredText(afterLastCard)
+  
+  return outro || ''
+}
+
+// 解析AI返回的音频URL和卡片ID（完全通用，不依赖固定格式）
 const parseAIResponse = (content: string) => {
-  // 匹配音频URL：支持多种格式
-  // 格式1: 音频: https://... 或 音频：https://...
-  // 格式2: 直接的 https://voice-keeper.oss...
-  let audioMatch = content.match(/(?:音频[：:]\s*)?(https:\/\/voice-keeper\.oss[-a-z0-9.]+\.aliyuncs\.com\/[^\s\n]+\.mp3)/i)
+  // 如果是卡片列表，不提取单个URL（避免只显示第一个）
+  if (isCardList(content)) {
+    return {
+      audioUrl: undefined,
+      cardId: undefined,
+      cardTitle: undefined
+    }
+  }
   
-  // 匹配卡片ID：卡片ID: 123 或 卡片ID：123
-  const cardMatch = content.match(/卡片ID[：:]\s*(\d+)/)
+
+  let audioUrl: string | undefined
   
-  // 提取卡片标题（从markdown格式的加粗文本中）
-  // 例如：**【早安问候】** 或 🎵 **【早安问候】**
-  const titleMatch = content.match(/\*\*【([^】]+)】\*\*/)
+  // 优先从Markdown链接中提取（更准确）
+  const markdownMatch = content.match(/\]\((https:\/\/voice-keeper\.oss[-a-z0-9.]+\.aliyuncs\.com\/[^\)]+\.mp3)\)/i)
+  if (markdownMatch) {
+    audioUrl = markdownMatch[1]
+  } else {
+    // 直接查找voice-keeper的mp3 URL（最通用）
+    const urlMatch = content.match(/(https:\/\/voice-keeper\.oss[-a-z0-9.]+\.aliyuncs\.com\/[^\s\)]+\.mp3)/i)
+    audioUrl = urlMatch ? urlMatch[1] : undefined
+  }
+
+  const idPatterns = [
+    /(?:【)?(?:卡片)?(?:\*\*)?(?:ID|id|Id)(?:\*\*)?(?:】)?[：:]\s*(\d+)/i,  // 支持【卡片ID】: 15
+    /[🆔📋]\s*(\d+)/i  // emoji + 数字
+  ]
+  
+  let cardId: number | undefined
+  for (const pattern of idPatterns) {
+    const match = content.match(pattern)
+    if (match) {
+      cardId = parseInt(match[1])
+      break
+    }
+  }
+
+  let cardTitle: string | undefined
+  const titlePatterns = [
+    /「([^」]+)」/,  // 中文引号「xxx」
+    /【卡片标题】[：:]\s*([^\n]+)/i,  // 【卡片标题】: xxx
+    /(?:【)?(?:\*\*)?(?:卡片)?标题(?:\*\*)?(?:】)?[：:]\s*([^\n*]+)/i,  // 标题: xxx（所有变体）
+    /\*\*【([^】]+)】\*\*/,  // **【xxx】**
+    /【([^】]+)】/  // 【xxx】
+  ]
+  
+  for (const pattern of titlePatterns) {
+    const match = content.match(pattern)
+    if (match) {
+      cardTitle = match[1].trim()
+      break
+    }
+  }
   
   return {
-    audioUrl: audioMatch ? audioMatch[1] || audioMatch[0] : undefined,
-    cardId: cardMatch ? parseInt(cardMatch[1]) : undefined,
-    cardTitle: titleMatch ? titleMatch[1] : undefined
+    audioUrl: audioUrl,
+    cardId: cardId,
+    cardTitle: cardTitle
   }
 }
 
@@ -324,42 +632,12 @@ const parseAIResponse = (content: string) => {
 const fileInputRef = ref<HTMLInputElement>()
 const uploadedFile = ref<File | null>(null)
 const isDragoverChat = ref(false)
-const { uploading: fileUploading, upload: uploadFile } = useFileUpload('voice_sample', {
+const { upload: uploadFile } = useFileUpload('voice_sample', {
   maxSize: 52428800,  // 50MB
   allowedTypes: ['audio/mpeg', 'audio/wav', 'audio/mp4', 'audio/ogg', 'audio/flac', 'audio/x-m4a']
 })
 
 // 推荐场景
-const recommendScenes = [
-  {
-    tag: 'morning',
-    title: '早安问候',
-    emoji: '🌅',
-    desc: '用温暖的声音开启美好的一天',
-    gradient: 'var(--gradient-morning)'
-  },
-  {
-    tag: 'night',
-    title: '晚安问候',
-    emoji: '🌙',
-    desc: '让亲人的声音陪伴入眠',
-    gradient: 'var(--gradient-night)'
-  },
-  {
-    tag: 'encourage',
-    title: '鼓励支持',
-    emoji: '💪',
-    desc: '在困难时刻给予力量',
-    gradient: 'var(--gradient-encourage)'
-  },
-  {
-    tag: 'miss',
-    title: '表达思念',
-    emoji: '💭',
-    desc: '传递深深的思念之情',
-    gradient: 'var(--gradient-miss)'
-  }
-]
 
 // 文件上传相关函数
 const triggerFileUpload = () => {
@@ -391,7 +669,7 @@ const handleChatDrop = (event: DragEvent) => {
       ElMessage.error('请上传音频文件')
       return
     }
-    if (file.size > 52428800) { // 50MB
+    if (file.size > 52428800) {
       ElMessage.error('文件大小不能超过50MB')
       return
     }
@@ -534,7 +812,6 @@ const handleSendMessage = async (customMessage?: string, silent = false) => {
             // 解析步骤消息（支持多行内容）
             const stepMatch = data.match(/^Step (\d+): ([\s\S]+)/)
             if (stepMatch) {
-              const stepNumber = parseInt(stepMatch[1])
               const stepText = stepMatch[2]
               const isDone = stepText.includes('✓')
               const isProcessing = stepText.includes('⏳')
@@ -605,10 +882,6 @@ const handleSendMessage = async (customMessage?: string, silent = false) => {
 }
 
 // 场景卡片点击
-const handleSceneClick = (scene: any) => {
-  ElMessage.info(`即将创建 ${scene.title} 卡片`)
-  router.push({ path: '/create-card', query: { scene: scene.tag } })
-}
 
 // 跳转到卡片详情
 const goToCardDetail = (cardId: number) => {
@@ -655,26 +928,8 @@ const stopPolling = () => {
 }
 
 // 导航跳转
-const navigateTo = (path: string) => {
-  router.push(path)
-}
 
 // 退出登录
-const handleLogout = async () => {
-  try {
-    await ElMessageBox.confirm('确定要退出登录吗？', '提示', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    })
-
-    await userStore.logout()
-    ElMessage.success('已退出登录')
-    router.push('/login')
-  } catch (error) {
-    // 取消操作
-  }
-}
 </script>
 
 <style scoped>
@@ -817,6 +1072,12 @@ const handleLogout = async () => {
   min-width: 430px;
 }
 
+/* 包含卡片列表的消息气泡 */
+.ai-message .message-bubble:has(.card-list-response) {
+  max-width: 650px;
+  min-width: 500px;
+}
+
 .ai-thinking {
   padding: var(--spacing-md);
 }
@@ -839,6 +1100,115 @@ const handleLogout = async () => {
 .ai-response {
   color: var(--color-text-primary);
   line-height: 1.6;
+}
+
+/* 单张卡片样式（通用：创建成功 + 查询结果） */
+.single-card-response {
+  width: 100%;
+}
+
+.card-intro {
+  color: var(--color-text-primary);
+  font-size: var(--font-size-base);
+  line-height: 1.6;
+  margin-bottom: var(--spacing-md);
+}
+
+.card-outro {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-base);
+  line-height: 1.6;
+  margin-top: var(--spacing-md);
+}
+
+/* 卡片列表样式 */
+.card-list-response {
+  width: 100%;
+  max-width: 600px;
+}
+
+.card-list-intro {
+  color: var(--color-text-primary);
+  font-size: var(--font-size-base);
+  line-height: 1.6;
+  margin-bottom: var(--spacing-lg);
+}
+
+.cards-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  margin: var(--spacing-md) 0;
+}
+
+.card-item {
+  background: var(--color-bg);
+  border: 2px solid var(--color-primary);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+  transition: all var(--transition-base);
+}
+
+.card-item:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-sm);
+}
+
+.card-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: var(--gradient-morning);
+  color: white;
+  border-radius: 50%;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  flex-shrink: 0;
+}
+
+.card-title {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+  flex: 1;
+}
+
+.card-audio {
+  width: 100%;
+  height: 40px;
+  margin: var(--spacing-sm) 0;
+  border-radius: var(--radius-sm);
+}
+
+.card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: var(--spacing-sm);
+  padding-top: var(--spacing-sm);
+  border-top: 1px solid var(--color-border);
+}
+
+.card-id {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-tertiary);
+}
+
+.card-list-outro {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-base);
+  line-height: 1.6;
+  margin-top: var(--spacing-lg);
+  font-style: italic;
 }
 
 /* 音频播放器卡片 */
@@ -1144,10 +1514,22 @@ const handleLogout = async () => {
     min-width: 330px;
   }
 
+  .ai-message .message-bubble:has(.card-list-response) {
+    max-width: 95%;
+    min-width: auto;
+  }
+
+  .card-list-response {
+    max-width: 100%;
+  }
+
+  .card-item {
+    padding: var(--spacing-sm);
+  }
+
   .ai-message .message-bubble,
   .user-message .message-bubble {
     max-width: 90%;
   }
 }
 </style>
-

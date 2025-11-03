@@ -1,5 +1,6 @@
 package com.zyb.backend.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.zyb.backend.common.exception.BusinessException;
 import com.zyb.backend.common.response.ResultCode;
 import com.zyb.backend.model.entity.VoiceCard;
@@ -14,6 +15,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 /**
@@ -43,6 +45,7 @@ public class VoiceCardVectorService {
 
             // 2. 组装文本
             String indexText = buildIndexText(card);
+            log.info("索引文本: cardId={}, text={}", cardId, indexText);
 
             // 3. 准备 metadata
             Map<String, Object> metadata = new HashMap<>();
@@ -55,7 +58,7 @@ public class VoiceCardVectorService {
             metadata.put("createTime", card.getCreateTime().getTime());
             
             // 4. 创建 Document 对象
-            Document document = new Document(indexText, metadata);
+            Document document = new Document(cardId.toString(), indexText, metadata);
 
             // 5. 添加到向量存储
             vectorStore.add(List.of(document));
@@ -80,7 +83,7 @@ public class VoiceCardVectorService {
             SearchRequest searchRequest = SearchRequest.builder()
                     .query(query)
                     .topK(topK * 2)
-                    .similarityThreshold(0.7)
+                    .similarityThreshold(0.5)
                     .build();
 
             // 2. 执行向量检索
@@ -92,8 +95,18 @@ public class VoiceCardVectorService {
                     .filter(doc -> {
                         // 过滤 userId
                         Object userIdObj = doc.getMetadata().get("userId");
-                        Long docUserId = (Long) userIdObj;
-                        if (docUserId == null || !docUserId.equals(userId)) {
+                        if (userIdObj == null) return false;
+                        
+                        Long docUserId;
+                        if (userIdObj instanceof Integer) {
+                            docUserId = ((Integer) userIdObj).longValue();
+                        } else if (userIdObj instanceof Long) {
+                            docUserId = (Long) userIdObj;
+                        } else {
+                            return false;
+                        }
+                        
+                        if (!docUserId.equals(userId)) {
                             return false;
                         }
                         
@@ -114,7 +127,14 @@ public class VoiceCardVectorService {
             List<Long> cardIds = filteredResults.stream()
                     .map(doc -> {
                         Object cardIdObj = doc.getMetadata().get("cardId");
-                        return (Long) cardIdObj;
+                        if (cardIdObj == null) return null;
+                        
+                        if (cardIdObj instanceof Integer) {
+                            return ((Integer) cardIdObj).longValue();
+                        } else if (cardIdObj instanceof Long) {
+                            return (Long) cardIdObj;
+                        }
+                        return null;
                     })
                     .filter(Objects::nonNull)
                     .collect(Collectors.toList());
@@ -159,6 +179,57 @@ public class VoiceCardVectorService {
     }
 
     /**
+     * 批量索引所有卡片
+     * 异步执行，用于初始化或重建索引
+     * 
+     * @param userId 用户ID，为null时索引所有用户的卡片
+     */
+    public void indexAllCards(Long userId) {
+        CompletableFuture.runAsync(() -> {
+            try {
+                log.info("开始批量索引卡片: userId={}", userId);
+                
+                // 1. 查询所有需要索引的卡片
+                List<VoiceCard> cards;
+                if (userId != null) {
+                    cards = voiceCardService.list(new LambdaQueryWrapper<VoiceCard>()
+                            .eq(VoiceCard::getUserId, userId)
+                            .eq(VoiceCard::getIsDelete, 0));
+                } else {
+                    cards = voiceCardService.list(new LambdaQueryWrapper<VoiceCard>()
+                            .eq(VoiceCard::getIsDelete, 0));
+                }
+                
+                log.info("共需索引 {} 张卡片", cards.size());
+                
+                // 2. 批量索引
+                int successCount = 0;
+                int failCount = 0;
+                
+                for (VoiceCard card : cards) {
+                    try {
+                        indexCard(card.getId());
+                        successCount++;
+                        
+                        // 每10张卡片输出一次进度
+                        if (successCount % 10 == 0) {
+                            log.info("批量索引进度: {}/{}", successCount, cards.size());
+                        }
+                    } catch (Exception e) {
+                        log.error("索引卡片失败: cardId={}, error={}", card.getId(), e.getMessage());
+                        failCount++;
+                    }
+                }
+                
+                log.info("批量索引完成: 成功={}, 失败={}", successCount, failCount);
+                
+            } catch (Exception e) {
+                log.error("批量索引失败: {}", e.getMessage(), e);
+            }
+        });
+    }
+
+    /**
      * 构建索引文本
      */
     private String buildIndexText(VoiceCard card) {
@@ -183,7 +254,13 @@ public class VoiceCardVectorService {
         // 4. 情感标签
         if (card.getEmotionTag() != null && !card.getEmotionTag().isEmpty()) {
             String emotionDesc = getEmotionDescription(card.getEmotionTag());
-            text.append("情感标签：").append(emotionDesc).append("\n");
+            text.append("情感特征：").append(emotionDesc).append("\n");
+        }
+        
+        // 5. 场景关联的情感关键词
+        String emotionKeywords = getEmotionKeywords(card.getSceneTag());
+        if (!emotionKeywords.isEmpty()) {
+            text.append("情感关键词：").append(emotionKeywords).append("\n");
         }
 
         return text.toString().trim();
@@ -194,11 +271,11 @@ public class VoiceCardVectorService {
      */
     private String getSceneDescription(String sceneTag) {
         return switch (sceneTag) {
-            case "morning" -> "早晨问候，适合清晨起床时播放，传递活力和祝福";
-            case "night" -> "夜晚问候，适合睡前播放，温馨轻柔的晚安祝福";
-            case "encourage" -> "鼓励支持，在困难或挫折时给予力量和信心";
-            case "miss" -> "表达思念，传递深情的想念和牵挂";
-            default -> "自定义场景";
+            case "morning" -> "早晨问候，充满活力和正能量，让人感到开心愉悦，适合清晨起床时播放，传递祝福和美好心情";
+            case "night" -> "夜晚问候，温馨柔和，让人感到温暖安心，适合睡前播放，带来宁静和放松的感觉";
+            case "encourage" -> "鼓励支持，充满力量和希望，让人感到被支持和理解，在困难或挫折时给予信心和勇气";
+            case "miss" -> "表达思念，深情温柔，让人感到被牵挂和爱护，传递想念和期待";
+            default -> "自定义";
         };
     }
 
@@ -207,11 +284,28 @@ public class VoiceCardVectorService {
      */
     private String getEmotionDescription(String emotionTag) {
         return switch (emotionTag) {
-            case "warm" -> "温暖关怀";
-            case "gentle" -> "温柔轻声";
-            case "energetic" -> "充满活力";
-            case "sad" -> "深情感伤";
+            case "warm" -> "温暖关怀，让人感到被爱和温暖";
+            case "gentle" -> "温柔轻声，柔和舒缓";
+            case "energetic" -> "充满活力，积极向上，让人开心";
+            case "sad" -> "深情感伤，温柔治愈";
             default -> "";
+        };
+    }
+    
+    /**
+     * 根据场景生成情感关键词
+     */
+    private String getEmotionKeywords(String sceneTag) {
+        if (sceneTag == null || sceneTag.isEmpty()) {
+            return "温暖 陪伴 关心 温柔";
+        }
+        
+        return switch (sceneTag) {
+            case "morning" -> "开心 快乐 愉悦 活力 正能量 美好 祝福 元气 阳光 积极 充满希望";
+            case "night" -> "温暖 安心 放松 宁静 柔和 舒适 安慰 平和 轻松 温馨";
+            case "encourage" -> "支持 力量 信心 勇气 希望 理解 鼓励 坚强 相信 加油 振奋";
+            case "miss" -> "温柔 思念 牵挂 爱 关心 温暖 深情 想念 陪伴 珍惜";
+            default -> "温暖 陪伴 关心 温柔 爱 美好";
         };
     }
 }

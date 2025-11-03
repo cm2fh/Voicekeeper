@@ -29,12 +29,19 @@ public class SemanticSearchTool {
         - searchUserCards 未找到时的补充搜索
         不要用于：
         - 明确场景 → 直接用 searchUserCards
+        
+        重要：sceneFilter 使用规则
+        - 用户明确提到场景（晚安、早安、鼓励、想念）→ 传对应标签
+        - 用户只描述情感/特征（温暖、感动、柔和）→ 传 null（搜索所有场景）
+        示例：
+        - "找温暖的卡片" → sceneFilter=null
+        - "找晚安卡片" → sceneFilter="night"
         """)
     public String searchCardsBySemantic(
             @ToolParam(description = "用户ID") Long userId,
             @ToolParam(description = "自然语言查询，描述想找的卡片特征") String query,
-            @ToolParam(description = "场景过滤（可选）：morning/night/encourage/miss/custom，不传则搜索所有场景") String sceneFilter,
-            @ToolParam(description = "返回数量") Integer topK
+            @ToolParam(description = "场景过滤（可选，不确定时传null）：morning/night/encourage/miss/custom/null") String sceneFilter,
+            @ToolParam(description = "返回数量，默认5") Integer topK
     ) {
         try {
             log.info("调用语义搜索: userId={}, query={}", userId, query);

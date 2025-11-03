@@ -123,6 +123,11 @@ public class ToolCallAgent extends ReActAgent {
         }
 
         // 记录响应，用于Act方法
+        if (chatResponse == null) {
+            log.error("ChatResponse 为 null，无法继续执行");
+            getMessageList().add(new AssistantMessage("系统错误：无法获取响应"));
+            return false;
+        }
         this.toolCallChatResponse = chatResponse;
         AssistantMessage assistantMessage = chatResponse.getResult().getOutput();
 
@@ -225,10 +230,15 @@ public class ToolCallAgent extends ReActAgent {
         }
 
         if (detectLoop()) {
-            String correctionMessage = "[系统自我纠正]: 检测到循环模式，重新评估策略";
-            getMessageList().add(new AssistantMessage(correctionMessage));
+            log.error("检测到循环调用，终止执行以避免无限循环");
+            String errorMessage = "检测到重复的操作模式，无法继续。请尝试：\n" +
+                    "1. 用不同的方式描述您的需求\n" +
+                    "2. 提供更多详细信息\n" +
+                    "3. 检查资源是否存在（如声音模型、卡片等）";
+            getMessageList().add(new AssistantMessage(errorMessage));
+            setState(AgentState.FINISHED);  // 终止执行
             recentActions.clear();
-            return "检测到操作循环模式，将尝试自我纠错";
+            return errorMessage;
         }
 
         return "工具调用成功";

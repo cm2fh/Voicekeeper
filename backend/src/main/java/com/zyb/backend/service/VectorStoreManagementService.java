@@ -22,6 +22,9 @@ public class VectorStoreManagementService {
     @Resource
     private ElasticsearchClient elasticsearchClient;
 
+    @Resource
+    private VoiceCardVectorService voiceCardVectorService;
+
     @Value("${spring.ai.vectorstore.elasticsearch.index-name}")
     private String indexName;
 
@@ -32,7 +35,7 @@ public class VectorStoreManagementService {
     private boolean initializeSchema;
 
     /**
-     * 应用启动时检查并创建索引
+     * 应用启动时检查并创建索引，然后自动批量索引所有卡片
      */
     @PostConstruct
     public void initIndex() {
@@ -50,6 +53,11 @@ public class VectorStoreManagementService {
             } else {
                 log.info("索引 {} 已存在", indexName);
             }
+            
+            // 启动时自动批量索引所有历史卡片
+            log.info("开始自动批量索引历史卡片...");
+            reindexAllCards();
+            
         } catch (Exception e) {
             log.error("索引初始化失败: {}", e.getMessage(), e);
             // 不抛出异常，允许应用继续启动
@@ -136,6 +144,15 @@ public class VectorStoreManagementService {
             log.error("重建索引失败: {}", e.getMessage(), e);
             throw new RuntimeException("重建索引失败: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * 重新索引所有卡片
+     * 异步执行，批量索引数据库中的所有卡片到 Elasticsearch
+     */
+    public void reindexAllCards() {
+        log.info("开始批量索引所有历史卡片...");
+        voiceCardVectorService.indexAllCards(null);  // null 表示索引所有用户的卡片
     }
 }
 

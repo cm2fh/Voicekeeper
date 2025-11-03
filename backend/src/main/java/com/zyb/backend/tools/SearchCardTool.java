@@ -22,18 +22,34 @@ public class SearchCardTool {
         使用时机：
         - 用户要"播放"、"找"、"查看"已有卡片
         - 需要按场景筛选：早安→morning 晚安→night 鼓励→encourage 思念→miss
-        重要：播放卡片时必须先调用此工具检查是否已存在！
+        
+        重要：查询特定声音的卡片时，必须传voiceModelId！
+        流程：
+        1. 先 searchVoiceModelByName 获取 modelId
+        2. 再调用此工具，传入 voiceModelId 参数
+        3. 这样只返回该声音的卡片，避免混淆不同声音的卡片
         """)
     public String searchUserCards(@ToolParam(description = "用户ID") Long userId,
-                                  @ToolParam(description = "场景标签（可选）：morning/night/encourage/miss，不传则查询所有") String sceneTag) {
+                                  @ToolParam(description = "场景标签（可选）：morning/night/encourage/miss/custom，不传则查询所有") String sceneTag,
+                                  @ToolParam(description = "声音模型ID（可选）：传入后只返回该声音的卡片，用于查询特定声音的卡片") Long voiceModelId) {
         List<VoiceCard> cards;
         if (sceneTag != null && !sceneTag.isEmpty()) {
             cards = voiceCardService.listByUserIdAndScene(userId, sceneTag);
         } else {
             cards = voiceCardService.listByUserId(userId);
         }
+        
+        // 按voiceModelId过滤
+        if (voiceModelId != null) {
+            cards = cards.stream()
+                    .filter(card -> voiceModelId.equals(card.getVoiceModelId()))
+                    .toList();
+        }
 
         if (cards.isEmpty()) {
+            if (voiceModelId != null) {
+                return "没有找到该声音的卡片。";
+            }
             return sceneTag == null ?
                     "用户还没有创建声音卡片。" :
                     "用户还没有'" + getSceneText(sceneTag) + "'场景的卡片。";

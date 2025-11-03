@@ -61,6 +61,17 @@ public class VectorStoreController {
         }
     }
 
+    @PostMapping("/cards/reindex")
+    public BaseResponse<String> reindexAllCards() {
+        try {
+            vectorStoreManagementService.reindexAllCards();
+            return BaseResponse.success("批量索引已提交，正在后台执行");
+        } catch (Exception e) {
+            log.error("批量索引失败", e);
+            throw new BusinessException(ResultCode.SYSTEM_ERROR, "批量索引失败: " + e.getMessage());
+        }
+    }
+
     @PostMapping("/index/check")
     public BaseResponse<Boolean> checkIndex() {
         try {

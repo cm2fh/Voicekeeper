@@ -31,13 +31,19 @@ spring:
     connection-timeout: 10s
     socket-timeout: 30s
 
-  # AI 向量存储
+  # AI 配置
   ai:
+    dashscope:
+      embedding:
+        enabled: true
+        model: text-embedding-v3
+    
+    # 向量存储
     vectorstore:
       elasticsearch:
         initialize-schema: true  # 自动创建索引
         index-name: voicekeeper_cards
-        dimensions: 1536  # DashScope embedding 维度
+        dimensions: 1536  # text-embedding-v3 的向量维度
         similarity: cosine  # 余弦相似度
 
 # Server
