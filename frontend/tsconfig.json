@@ -1,0 +1,24 @@
+{
+  "extends": "@vue/tsconfig/tsconfig.dom.json",
+  "include": [
+    "config/typescript/env.d.ts", 
+    "src/**/*", 
+    "src/**/*.vue",
+    "vite.config.*",
+    "config/eslint/*.js"
+  ],
+  "exclude": ["src/**/__tests__/*"],
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+    "types": ["node", "vite/client"]
+  },
+  "references": [
+    { "path": "./config/typescript/app.json" },
+    { "path": "./config/typescript/node.json" }
+  ]
+}
+
+
+

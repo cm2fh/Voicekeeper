@@ -1,0 +1,98 @@
+:root {
+  /* ========== 颜色系统 ========== */
+  
+  /* 主色调（温暖橙） */
+  --color-primary: #FF9A62;
+  --color-primary-light: #FFB488;
+  --color-primary-dark: #E6814C;
+  
+  /* 辅助色（柔和粉） */
+  --color-secondary: #FFB4C2;
+  --color-secondary-light: #FFC9D4;
+  --color-secondary-dark: #FF9FB0;
+  
+  /* 深夜蓝（夜间场景） */
+  --color-night: #2C3E50;
+  --color-night-light: #34495E;
+  
+  /* 中性色 */
+  --color-bg: #F8F9FA;
+  --color-card: #FFFFFF;
+  --color-border: #E8E9ED;
+  --color-text-primary: #2C3E50;
+  --color-text-secondary: #6C757D;
+  --color-text-tertiary: #ADB5BD;
+  
+  /* 功能色 */
+  --color-success: #A8E6CF;
+  --color-warning: #FFD93D;
+  --color-error: #FF6B6B;
+  --color-info: #6CC4FF;
+  
+  /* 场景渐变色 */
+  --gradient-morning: linear-gradient(135deg, #FFD89B 0%, #FF9A62 100%);
+  --gradient-night: linear-gradient(135deg, #667EEA 0%, #2C3E50 100%);
+  --gradient-encourage: linear-gradient(135deg, #FF6B6B 0%, #FF9A62 100%);
+  --gradient-miss: linear-gradient(135deg, #C9A0DC 0%, #FFB4C2 100%);
+  
+  /* ========== 字体系统 ========== */
+  --font-family-base: 'PingFang SC', 'Microsoft YaHei', -apple-system, system-ui, sans-serif;
+  --font-family-title: 'Source Han Serif SC', serif;
+  
+  --font-size-xs: 12px;
+  --font-size-sm: 14px;
+  --font-size-base: 16px;
+  --font-size-lg: 18px;
+  --font-size-xl: 20px;
+  --font-size-2xl: 24px;
+  --font-size-3xl: 32px;
+  
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  
+  /* ========== 间距系统 ========== */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --spacing-2xl: 48px;
+  
+  /* ========== 圆角 ========== */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
+  
+  /* ========== 阴影 ========== */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.08);
+  --shadow-xl: 0 12px 48px rgba(0, 0, 0, 0.12);
+  
+  /* ========== 过渡 ========== */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-base: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 500ms cubic-bezier(0.4, 0, 0.2, 1);
+  
+  /* ========== 层级 ========== */
+  --z-index-dropdown: 1000;
+  --z-index-modal: 2000;
+  --z-index-toast: 3000;
+  --z-index-tooltip: 4000;
+}
+
+/* 深色模式（可选） */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #1A1A1A;
+    --color-card: #2D2D2D;
+    --color-border: #404040;
+    --color-text-primary: #E8E9ED;
+    --color-text-secondary: #ADB5BD;
+  }
+}
+
